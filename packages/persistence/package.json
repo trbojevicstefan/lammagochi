@@ -10,5 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint:persistence TODO'",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
   }
 }

@@ -1,26 +1,22 @@
-export type PetProfile = {
-  id: string;
-  name: string;
-  modelName: string;
-  createdAt: string;
-  updatedAt: string;
-};
+export * from './migrations';
+export * from './repository';
+export * from './schema';
+export * from './types';
 
-export type MemoryItem = {
-  id: string;
-  petId: string;
-  title: string;
-  content: string;
-  approved: boolean;
-  createdAt: string;
-};
+import { createTablesSql } from './migrations';
+import { createPersistenceRepository, type PersistenceRepository, type SqlExecutor } from './repository';
 
 export interface PersistenceGateway {
   initialize(): Promise<void>;
+  repository: PersistenceRepository;
 }
 
-export const createPersistenceGateway = (): PersistenceGateway => ({
+export const createPersistenceGateway = (db: SqlExecutor): PersistenceGateway => ({
+  repository: createPersistenceRepository(db),
   async initialize() {
-    // Placeholder for Drizzle + SQLite initialization in next iteration.
+    for (const sql of createTablesSql) {
+      await db.execute(sql);
+    }
   },
 });
+
