@@ -6,6 +6,7 @@ import { createAchievements, checkAchievements, type Achievement, type Achieveme
 import { soundEffects } from './audio/soundEffects';
 import { showToast } from './ui/Toast';
 import { getNewlyUnlocked } from './game/stageAbilities';
+import { applyItemEffects, type GameItem } from './game/items';
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
@@ -92,6 +93,7 @@ interface AppState {
   setStreaming: (value: boolean) => void;
   setTaskDifficulty: (value: TaskDifficulty) => void;
   performAction: (action: ActionType) => void;
+  useItem: (item: GameItem) => void;
   feedKnowledge: (text: string) => void;
   setMemoryApproval: (id: string, approved: boolean) => void;
   clearUserInput: () => void;
@@ -423,6 +425,69 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (s.currentAnimation === 'evolving') set({ currentAnimation: null });
       }, 3000);
     }
+  },
+
+  useItem: (item) => {
+    const state = get();
+    if (state.stage !== 'alive') return;
+
+    const stats = applyItemEffects(state.stats, item);
+    const progression = addXp(state.xp, state.level, item.xpGain);
+    const counts = { ...state.actionCounts };
+
+    // Trigger matching animation
+    const animMap: Record<string, string> = {
+      milk_bottle: 'eating', soft_food: 'eating',
+      blanket: 'sleepy', water_drop: 'cleaning',
+      soap_bubble: 'cleaning', brush: 'cleaning',
+      rattle: 'playing', toy_block: 'playing',
+      flash_card: 'learning', story_book: 'learning', puzzle_piece: 'learning',
+      heart_pat: 'happy', elixir: 'excited',
+    };
+    const anim = animMap[item.id] || 'happy';
+
+    set({ currentAnimation: anim as PetAnimationName });
+    setTimeout(() => {
+      const s = get();
+      if (s.currentAnimation === anim) set({ currentAnimation: null });
+    }, 2500);
+
+    // Sound
+    if (state.soundEnabled) soundEffects.action(item.id.includes('food') || item.id.includes('milk') ? 'feed' : 'play');
+
+    // Toast
+    showToast('xp', `+${item.xpGain} XP`, `Used ${item.name}`, 2500);
+
+    // Level-up detection
+    const justLeveled = progression.level > state.level;
+    const newEvoStage = getEvolutionStage(progression.level);
+    const stageChanged = newEvoStage !== state.evolutionStage;
+
+    if (justLeveled) {
+      showToast('level', `Level ${progression.level}!`, `${item.name} helped you grow`, 3500);
+    }
+    if (stageChanged) {
+      const stageNames: Record<string, string> = { baby: 'Hatchling', child: 'Sprout', teen: 'Wanderer', adult: 'Sage' };
+      showToast('evolve', `${stageNames[newEvoStage]}!`, `Evolved to ${newEvoStage} stage`, 4000);
+    }
+
+    const entry: JournalEntry = {
+      id: `jr_${Date.now()}`,
+      type: 'system',
+      content: `Used ${item.name}: ${item.description}`,
+      createdAt: Date.now(),
+    };
+
+    set({
+      stats,
+      xp: progression.xp,
+      level: progression.level,
+      evolutionStage: newEvoStage,
+      actionCounts: counts,
+      prevLevel: state.level,
+      journalEntries: [entry, ...state.journalEntries].slice(0, 60),
+      ...(justLeveled ? { currentAnimation: 'evolving' as PetAnimationName } : {}),
+    });
   },
 
   feedKnowledge: (text) => {

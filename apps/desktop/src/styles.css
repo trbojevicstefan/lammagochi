@@ -1363,6 +1363,121 @@ button:disabled {
 }
 
 /* =============================================
+   ITEM RIBBON
+   ============================================= */
+
+.item-drop-zone {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.item-ribbon {
+  padding: 6px 10px;
+  background: rgba(15, 23, 42, 0.6);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.item-ribbon__label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.item-ribbon__items {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+  flex: 1;
+}
+
+.item-ribbon__items::-webkit-scrollbar {
+  height: 3px;
+}
+
+.item-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  white-space: nowrap;
+  transition: all 0.15s var(--ease-out);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.item-chip:hover:not(.item-chip--disabled) {
+  border-color: var(--border-glow);
+  background: rgba(99, 102, 241, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.item-chip:active:not(.item-chip--disabled) {
+  cursor: grabbing;
+  transform: scale(0.95);
+}
+
+.item-chip--disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.item-chip--used {
+  border-color: var(--accent-green);
+  background: rgba(74, 222, 128, 0.12);
+  animation: item-pop 0.4s var(--ease-spring);
+}
+
+@keyframes item-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.item-chip__icon {
+  font-size: 1rem;
+}
+
+.item-chip__name {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.item-chip__stage {
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  padding: 1px 5px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.item-drag-ghost {
+  position: fixed;
+  z-index: 500;
+  font-size: 2.5rem;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.4));
+  transform: translate(-50%, -50%);
+}
+
+/* =============================================
    REDUCED MOTION
    ============================================= */
 

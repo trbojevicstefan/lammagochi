@@ -8,7 +8,7 @@ import { buildLamagotchiSystemPrompt } from './game/promptBuilder';
 import { chooseAutonomousPrompt } from './game/simulationTick';
 import { getEvolutionStage, getEvolutionName } from './game/evolution';
 import { getUpcoming } from './game/stageAbilities';
-import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer } from './ui';
+import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer, ItemRibbon } from './ui';
 import { soundEffects } from './audio/soundEffects';
 
 const adapter = new OllamaHttpAdapter();
@@ -64,6 +64,7 @@ export const App = () => {
     setTaskDifficulty,
     clearUserInput,
     performAction,
+    useItem,
     feedKnowledge,
     setMemoryApproval,
     addChatMessage,
@@ -590,6 +591,13 @@ export const App = () => {
           </div>
         </div>
       </section>
+
+      {/* Item Ribbon */}
+      <ItemRibbon
+        level={level}
+        onUseItem={(item) => { useItem(item); spark(); }}
+        disabled={stage !== 'alive' || isStreaming}
+      />
 
       {/* Bottom Action Zone */}
       <footer className="action-zone">

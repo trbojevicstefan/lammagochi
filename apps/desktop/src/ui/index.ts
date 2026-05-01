@@ -7,3 +7,4 @@ export { OnboardingScreen } from './OnboardingScreen';
 export { HatchScreen } from './HatchScreen';
 export { SettingsPanel } from './SettingsPanel';
 export { ToastContainer, showToast } from './Toast';
+export { ItemRibbon } from './ItemRibbon';
