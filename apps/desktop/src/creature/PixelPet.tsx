@@ -32,6 +32,8 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   const isNight = dayPhase === 'night';
 
   // Animation state (lerped)
+  // Expression blend targets (game-quality smooth transitions)
+  const exprRef = useRef({ eyeH:8, eyeY:31, squint:0, browY:0, browAngle:0, mouthW:4, mouthH:1.5, mouthY:43, mouthCurve:0, blushA:0.2, pupilH:5 });
   const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0,tailWag:0,idleVariant:0,pupilSize:1,headTilt:0,noseTwitch:0,eyeDartX:0,shimmerPos:0 });
   const [renderTick, setRender] = useState(0);
   const frameRef = useRef(0);
@@ -186,12 +188,31 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
         tg.wiggle += Math.sin(idleVariantTimer.current/200*Math.PI)*0.6;
       }
 
-      // Blend
+      // Blend body animation
       const c=aRef.current;
       c.bx=lerp(c.bx,tg.bx,0.10); c.by=lerp(c.by,tg.by,0.10);
       c.sx=lerp(c.sx,tg.sx,0.08); c.sy=lerp(c.sy,tg.sy,0.08);
       c.wiggle=lerp(c.wiggle,tg.wiggle,0.08); c.sway=lerp(c.sway,tg.sway,0.06);
       c.flash=lerp(c.flash,tg.flash,0.06);
+
+      // === EXPRESSION BLEND TARGETS (game-quality face) ===
+      const e = exprRef.current;
+      const eTgt = { eyeH:8, eyeY:31, squint:0, browY:0, browAngle:0, mouthW:4, mouthH:1.5, mouthY:43, mouthCurve:0, blushA:0.2, pupilH:5 };
+      if(anim==='happy'||anim==='playing'){ eTgt.eyeH=5; eTgt.eyeY=33; eTgt.squint=0.7; eTgt.browY=-1; eTgt.mouthW=6; eTgt.mouthH=3; eTgt.mouthCurve=1; eTgt.blushA=0.8; }
+      if(anim==='excited'){ eTgt.eyeH=9; eTgt.eyeY=30; eTgt.squint=0; eTgt.browY=-2; eTgt.mouthW=8; eTgt.mouthH=6; eTgt.mouthCurve=0; eTgt.blushA=0.6; eTgt.pupilH=6; }
+      if(anim==='craving'){ eTgt.eyeH=7; eTgt.eyeY=32; eTgt.squint=0.3; eTgt.browY=1.5; eTgt.browAngle=-8; eTgt.mouthW=6; eTgt.mouthH=1.5; eTgt.mouthY=44; eTgt.mouthCurve=-1; eTgt.blushA=0.3; }
+      if(anim==='sleepy'||anim==='daydreaming'){ eTgt.eyeH=2; eTgt.eyeY=34; eTgt.browY=0; eTgt.mouthW=8; eTgt.mouthH=3; eTgt.mouthY=43; eTgt.mouthCurve=0; eTgt.blushA=0.15; }
+      if(anim==='eating'){ eTgt.eyeH=6; eTgt.eyeY=32; eTgt.squint=0.5; eTgt.mouthW=8; eTgt.mouthH=3; eTgt.mouthCurve=0; eTgt.blushA=0.3; }
+      if(anim==='cleaning'){ eTgt.eyeH=8; eTgt.eyeY=31; eTgt.squint=0; eTgt.mouthW=4; eTgt.mouthH=1.5; eTgt.mouthCurve=0.5; eTgt.blushA=0.3; }
+      if(anim==='learning'){ eTgt.eyeH=7; eTgt.eyeY=32; eTgt.squint=0.1; eTgt.browY=0; eTgt.mouthW=2; eTgt.mouthH=1.5; eTgt.blushA=0.15; }
+      if(anim==='evolving'){ eTgt.eyeH=9; eTgt.eyeY=30; eTgt.squint=0; eTgt.browY=-1; eTgt.mouthW=8; eTgt.mouthH=5; eTgt.mouthCurve=0; eTgt.blushA=0.4; eTgt.pupilH=6; }
+      // Blend expressions smoothly (slower blend = more natural)
+      e.eyeH=lerp(e.eyeH,eTgt.eyeH,0.08); e.eyeY=lerp(e.eyeY,eTgt.eyeY,0.08);
+      e.squint=lerp(e.squint,eTgt.squint,0.06); e.browY=lerp(e.browY,eTgt.browY,0.06);
+      e.browAngle=lerp(e.browAngle,eTgt.browAngle,0.04); e.mouthW=lerp(e.mouthW,eTgt.mouthW,0.08);
+      e.mouthH=lerp(e.mouthH,eTgt.mouthH,0.08); e.mouthY=lerp(e.mouthY,eTgt.mouthY,0.08);
+      e.mouthCurve=lerp(e.mouthCurve,eTgt.mouthCurve,0.06); e.blushA=lerp(e.blushA,eTgt.blushA,0.06);
+      e.pupilH=lerp(e.pupilH,eTgt.pupilH,0.08);
 
       setRender(Math.floor(frameRef.current*25)%10000);
       rafRef.current=requestAnimationFrame(tick);
@@ -217,7 +238,9 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   };
   const [bodyMain,bodyLight,bodyDark]=sm[skin]||sm.none;
 
-  // === EMOTION SYSTEM ===
+  // Expression values (lerped, game-quality)
+  const { eyeH:exEyeH, eyeY:exEyeY, squint:exSquint, browY:exBrowY, browAngle:exBrowA, mouthW:exMouthW, mouthH:exMouthH, mouthY:exMouthY, mouthCurve:exMouthCurve, blushA:exBlushA, pupilH:exPupilH } = exprRef.current;
+  // Legacy booleans (keep for now, will be removed when SVG face is migrated to expression system)
   const isHappy = resolvedAnim==='happy'||resolvedAnim==='playing';
   const isSad = resolvedAnim==='craving';
   const isSleepy = resolvedAnim==='sleepy'||resolvedAnim==='daydreaming';
@@ -226,8 +249,6 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   const isCleaning = resolvedAnim==='cleaning';
   const isLearning = resolvedAnim==='learning';
   const isEvolving = resolvedAnim==='evolving';
-
-  // Eyebrow positions — clean, readable expressions
   const browY = isHappy?-1:isSad?1:isSleepy?-0.5:isExcited?-1.5:0;
   const browAngle = isSad?'rotate(-10 24 30)':isExcited?'rotate(-4 24 30)':'';
   const browAngleR = isSad?'rotate(10 40 30)':isExcited?'rotate(4 40 30)':'';
