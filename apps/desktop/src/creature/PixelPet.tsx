@@ -16,7 +16,17 @@ const lerp = (a:number,b:number,t:number) => a+(b-a)*Math.min(t,1);
 
 export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=0, skin='none', actionAnimation }: Props) => {
   const levelScale = getLevelScale(level);
-  const st = (lvl:number) => ({ isEgg:lvl<=1, hasFeet:lvl>=4, hasCrest:lvl>=7, hasHands:lvl>=12, hasWisdom:lvl>=20, hasAura:lvl>=25, isSage:lvl>=31 });
+  const st = (lvl:number) => ({
+    isEgg:lvl<=1, isInfant:lvl>=2&&lvl<=5, isToddler:lvl>=6&&lvl<=10,
+    isLearner:lvl>=11&&lvl<=18, isCompanion:lvl>=19&&lvl<=30, isSage:lvl>=31,
+    hasFeet:lvl>=4, hasCrest:lvl>=7, hasHands:lvl>=12, hasWisdom:lvl>=20, hasAura:lvl>=25,
+    // Stage body proportions
+    bodyW: lvl<=5?34:lvl<=10?32:lvl<=18?30:28,
+    bodyH: lvl<=5?28:lvl<=10?30:lvl<=18?32:34,
+    headR: lvl<=5?0.6:lvl<=10?0.58:lvl<=18?0.56:0.55,
+    eyeSize: lvl<=5?0.18:lvl<=10?0.15:lvl<=18?0.14:0.13,
+    mouthY: lvl<=5?43:lvl<=10?42:lvl<=18?41:40,
+  });
   const si = st(level);
   const resolvedAnim: PetAnim = (actionAnimation as PetAnim) || moodToAnim[mood];
   const isNight = dayPhase === 'night';
@@ -235,10 +245,12 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
               {skin==='aurora'&&(<g><rect x="25" y="7" width="4" height="4" fill="#67e8f9" opacity="0.6"/><rect x="31" y="5" width="3" height="3" fill="#a78bfa" opacity="0.5"/><rect x="35" y="7" width="4" height="4" fill="#67e8f9" opacity="0.4"/></g>)}
             </g>)}
 
-            {/* Feet */}
+            {/* Feet — positioned under body */}
             {si.hasFeet&&(<g>
-              <rect x="19" y="49" width="10" height="5" fill={bodyDark} rx="1"/><rect x="35" y="49" width="10" height="5" fill={bodyDark} rx="1"/>
-              <rect x="20" y="48" width="8" height="2" fill={bodyLight}/><rect x="36" y="48" width="8" height="2" fill={bodyLight}/>
+              <rect x={32-si.bodyW/2+4} y={22+si.bodyH-4} width={10} height={5} fill={bodyDark} rx="1"/>
+              <rect x={32+si.bodyW/2-14} y={22+si.bodyH-4} width={10} height={5} fill={bodyDark} rx="1"/>
+              <rect x={32-si.bodyW/2+5} y={22+si.bodyH-5} width={8} height={2} fill={bodyLight}/>
+              <rect x={32+si.bodyW/2-13} y={22+si.bodyH-5} width={8} height={2} fill={bodyLight}/>
             </g>)}
 
             {/* Tail (child+) */}
@@ -251,11 +263,11 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
               </g>
             )}
 
-            {/* MAIN BODY */}
-            <rect x="15" y="22" width="34" height="28" rx="7" fill={bodyMain}/>
-            <rect x="17" y="20" width="30" height="32" rx="7" fill={bodyMain}/>
-            <rect x="17" y="22" width="26" height="5" rx="2" fill={bodyLight} opacity="0.7"/>
-            <rect x="15" y="28" width="4" height="16" rx="1" fill={bodyDark} opacity="0.6"/>
+            {/* MAIN BODY — stage-proportioned */}
+            <rect x={32-si.bodyW/2} y={22} width={si.bodyW} height={si.bodyH} rx={si.isInfant?9:7} fill={bodyMain}/>
+            <rect x={32-si.bodyW/2+2} y={20} width={si.bodyW-4} height={si.bodyH+4} rx={si.isInfant?9:7} fill={bodyMain}/>
+            <rect x={32-si.bodyW/2+2} y={22} width={si.bodyW-8} height={5} rx="2" fill={bodyLight} opacity="0.7"/>
+            <rect x={32-si.bodyW/2} y={28} width={4} height={si.bodyH-12} rx="1" fill={bodyDark} opacity="0.6"/>
 
             {/* Ninja headband */}
             {skin==='ninja'&&(<g><rect x="13" y="26" width="38" height="4" fill="#dc2626"/><rect x="6" y={26+Math.sin(frameRef.current*2)*1} width="7" height="2" fill="#b91c1c"/></g>)}
