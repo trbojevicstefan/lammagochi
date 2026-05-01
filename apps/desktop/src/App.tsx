@@ -691,6 +691,7 @@ export const App = () => {
         onRename={(name) => { setPetName(name); setSettingsOpen(false); }}
         onToggleSound={toggleSound}
         currentSkin={currentSkin}
+        personality={personality}
         onSetSkin={setSkin}
       />
     </main>

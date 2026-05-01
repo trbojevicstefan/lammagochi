@@ -333,7 +333,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const prevLevel = state.level;
     const progression = addXp(state.xp, state.level, xpGain);
     const emojiMap: Record<string, string> = { feed: '🍎 ', play: '🎾 ', sleep: '😴 ', clean: '✨ ', teach: '📚 ', task: '⚡ ', daydream: '💭 ' };
-    const response = emojiMap[action] + capWords(moodWord(stats), progression.level);
+    // Personality-driven reaction
+    const personalityReaction = getPersonalityReaction(state.personality, action);
+    const baseResponse = personalityReaction || moodWord(stats);
+    const response = emojiMap[action] + capWords(baseResponse, progression.level);
 
     // Journal entries
     const journalType: JournalEntry['type'] | null =

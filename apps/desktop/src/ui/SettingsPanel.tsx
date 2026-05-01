@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { SKINS, getUnlockedSkins, type PetSkin } from '../game/evolution';
+import type { PetPersonality } from '../game/personality';
 
 type SettingsPanelProps = {
   isOpen: boolean;
@@ -13,6 +14,7 @@ type SettingsPanelProps = {
   stage: string;
   wordCap: number;
   currentSkin: string;
+  personality?: PetPersonality;
   onRename: (name: string) => void;
   onToggleSound: () => void;
   onSetSkin: (skin: string) => void;
@@ -31,6 +33,7 @@ export const SettingsPanel = ({
   onRename,
   onToggleSound,
   currentSkin,
+  personality,
   onSetSkin,
 }: SettingsPanelProps) => {
   const [editName, setEditName] = useState(petName);
@@ -67,6 +70,12 @@ export const SettingsPanel = ({
               <div><span>XP</span><span>{xp}</span></div>
               <div><span>Stage</span><span>{stage}</span></div>
               <div><span>Word Cap</span><span>{wordCap >= 999 ? '∞' : wordCap}</span></div>
+              {personality && (
+                <>
+                  <div><span>Personality</span><span>{personality.primary} / {personality.secondary}</span></div>
+                  <div><span>Quirk</span><span style={{fontSize:'0.65rem'}}>{personality.quirk}</span></div>
+                </>
+              )}
             </div>
           </section>
 
