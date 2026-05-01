@@ -12,14 +12,19 @@ interface AppState {
   xp: number;
   stats: Stats;
   bubbleText: string;
+  isStreaming: boolean;
   userInput: string;
   lastTick: number;
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
   hatch: () => void;
   setUserInput: (text: string) => void;
+  setBubbleText: (text: string) => void;
+  setStreaming: (value: boolean) => void;
   performAction: (action: ActionType) => void;
-  sendUserMessage: () => void;
+  clearUserInput: () => void;
+  hydrateFromLocal: () => void;
+  persistToLocal: () => void;
   applyDecayTick: () => void;
 }
 
@@ -50,11 +55,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   xp: 0,
   stats: DEFAULT_STATS,
   bubbleText: 'Hungry',
+  isStreaming: false,
   userInput: '',
   lastTick: Date.now(),
 
   setPetName: (name) => set({ petName: name || 'Noodle', stage: 'named_egg' }),
-  setModelName: (model) => set({ modelName: model || 'Not connected', stage: 'onboarding' }),
+  setModelName: (model) =>
+    set((state) => ({
+      modelName: model || 'Not connected',
+      stage: state.stage === 'alive' ? state.stage : 'onboarding',
+    })),
   hatch: () => {
     const state = get();
     if (state.stage !== 'named_egg') return;
@@ -67,6 +77,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }, 1500);
   },
   setUserInput: (text) => set({ userInput: text }),
+  setBubbleText: (text) => set({ bubbleText: text }),
+  setStreaming: (value) => set({ isStreaming: value }),
+  clearUserInput: () => set({ userInput: '' }),
 
   performAction: (action) => {
     const state = get();
@@ -123,11 +136,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  sendUserMessage: () => {
+  hydrateFromLocal: () => {
+    const raw = localStorage.getItem('lamagotchi.v1');
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as Partial<AppState>;
+      set({
+        stage: (parsed.stage as LifecycleStage) ?? 'onboarding',
+        petName: parsed.petName ?? 'Noodle',
+        modelName: parsed.modelName ?? 'Not connected',
+        level: typeof parsed.level === 'number' ? parsed.level : 1,
+        xp: typeof parsed.xp === 'number' ? parsed.xp : 0,
+        stats: parsed.stats ?? DEFAULT_STATS,
+        bubbleText: parsed.bubbleText ?? 'Hungry',
+        lastTick: typeof parsed.lastTick === 'number' ? parsed.lastTick : Date.now(),
+      });
+    } catch {
+      // ignore invalid local state
+    }
+  },
+  persistToLocal: () => {
     const state = get();
-    if (state.stage !== 'alive') return;
-    const response = capWords(moodWord(state.stats), state.level);
-    set({ bubbleText: response || 'Hi', userInput: '' });
+    const snapshot = {
+      stage: state.stage,
+      petName: state.petName,
+      modelName: state.modelName,
+      level: state.level,
+      xp: state.xp,
+      stats: state.stats,
+      bubbleText: state.bubbleText,
+      lastTick: state.lastTick,
+    };
+    localStorage.setItem('lamagotchi.v1', JSON.stringify(snapshot));
   },
 
   applyDecayTick: () => {

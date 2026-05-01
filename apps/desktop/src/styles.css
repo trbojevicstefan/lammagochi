@@ -92,14 +92,21 @@ body {
 
 .action-row,
 .chat-row,
-.naming-row {
+.naming-row,
+.model-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
+.model-row {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 input,
-button {
+button,
+select {
   background: rgba(9, 25, 31, 0.9);
   color: #ddfcff;
   border: 1px solid rgba(125, 250, 255, 0.35);
