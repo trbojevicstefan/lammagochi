@@ -101,6 +101,26 @@ export const App = () => {
     hydrateFromLocal();
   }, [hydrateFromLocal]);
 
+  // "While you were away" summary after hydration
+  useEffect(() => {
+    if (stage !== 'alive') return;
+    const lastTick = useAppStore.getState().lastTick;
+    const minsAway = Math.floor((Date.now() - lastTick) / 60000);
+    if (minsAway >= 5 && chatHistory.length === 0) {
+      const awayMsg: ChatMessage = {
+        id: `msg_away_${Date.now()}`,
+        role: 'system',
+        content: minsAway >= 1440
+          ? `😴 You were gone for ${Math.floor(minsAway / 1440)} day(s)! ${petName} missed you.`
+          : minsAway >= 120
+            ? `💤 ${petName} waited ${Math.floor(minsAway / 60)}h ${minsAway % 60}m for you to return.`
+            : `👋 Welcome back! ${petName} was alone for ${minsAway} minutes.`,
+        timestamp: Date.now(),
+      };
+      addChatMessage(awayMsg);
+    }
+  }, [stage]); // eslint-disable-line
+
   // Persist on state change
   useEffect(() => {
     persistToLocal();
