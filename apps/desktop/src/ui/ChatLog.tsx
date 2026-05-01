@@ -29,8 +29,9 @@ export const ChatLog = ({ messages, petName = 'Lamagotchi', isStreaming }: ChatL
     <div className="chat-log">
       {messages.length === 0 && (
         <div className="chat-log__empty">
-          <p>✨ Your conversation will appear here</p>
-          <small>Type a message below to start chatting</small>
+          <div className="chat-log__empty-icon">💬</div>
+          <p>Your conversation will appear here</p>
+          <small>Type a message below to start chatting with {petName}</small>
         </div>
       )}
       {messages.map((msg) => (
