@@ -31,21 +31,30 @@ export const HatchScreen = ({ petName, onComplete }: HatchScreenProps) => {
               <div className="hatch-crack hatch-crack--3" />
             </>
           )}
-          {phase === 'bursting' && (
+          {(phase === 'bursting' || phase === 'revealing') && (
             <>
               <div className="hatch-light-burst" />
               <div className="hatch-particles">
                 {Array.from({ length: 20 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="hatch-particle"
-                    style={{
-                      '--angle': `${(i / 20) * 360}deg`,
-                      '--delay': `${Math.random() * 0.5}s`,
-                      '--distance': `${80 + Math.random() * 120}px`,
-                    } as React.CSSProperties}
-                  />
+                  <div key={i} className="hatch-particle" style={{
+                    '--angle': `${(i/20)*360}deg`, '--delay': `${Math.random()*0.5}s`,
+                    '--distance': `${80+Math.random()*120}px`,
+                  } as React.CSSProperties} />
                 ))}
+              </div>
+              {/* Confetti */}
+              <div className="hatch-confetti">
+                {Array.from({ length: 24 }).map((_, i) => {
+                  const colors = ['#fbbf24','#f472b6','#67e8f9','#a78bfa','#4ade80','#f59e0b'];
+                  return (
+                    <div key={`c${i}`} className="hatch-confetti-piece" style={{
+                      '--delay': `${0.8+Math.random()*1.2}s`, '--distance': `${100+Math.random()*150}px`,
+                      '--drift': `${(Math.random()-0.5)*200}px`,
+                      background: colors[i%colors.length],
+                      left: `${40+Math.random()*20}%`,
+                    } as React.CSSProperties} />
+                  );
+                })}
               </div>
             </>
           )}

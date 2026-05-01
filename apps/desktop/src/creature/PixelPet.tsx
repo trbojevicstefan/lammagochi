@@ -261,6 +261,11 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
               <rect x="22" y="44" width="4" height="4" fill="#16a34a" rx="1"/>
             </g>)}
 
+            {/* Stage-specific body markings */}
+            {level>=6&&level<=10&&(<rect x="30" y="44" width="4" height="3" fill={bodyDark} opacity="0.3" rx="1"/>)}
+            {level>=11&&level<=18&&(<g opacity="0.3"><rect x="36" y="26" width="8" height="1" fill={bodyDark}/><rect x="38" y="28" width="4" height="1" fill={bodyDark}/></g>)}
+            {level>=19&&level<=30&&(<rect x="28" y="36" width="3" height="3" fill="#f472b6" opacity="0.4" rx="1"/>)}
+            {level>=31&&(<rect x="44" y="22" width="4" height="4" fill="#facc15" opacity="0.5" rx="1"/>)}
             {/* Wisdom lines */}
             {si.hasWisdom&&(<g opacity="0.35"><rect x="23" y="24" width="18" height="1" fill={bodyDark}/><rect x="25" y="26" width="14" height="1" fill={bodyDark}/><rect x="24" y="28" width="16" height="1" fill={bodyDark}/></g>)}
 

@@ -1083,14 +1083,32 @@ button:disabled {
 }
 
 @keyframes particle-burst {
-  0% {
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--distance) * -1));
-    opacity: 0;
-  }
+  0% { transform: translate(-50%, -50%) rotate(var(--angle)) translateY(0); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(var(--distance) * -1)); opacity: 0; }
+}
+
+/* Confetti burst */
+.hatch-confetti {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+}
+
+.hatch-confetti-piece {
+  position: absolute;
+  width: 6px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confetti-fall 2s ease-out forwards;
+  animation-delay: var(--delay);
+  opacity: 0;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translate(-50%, -50%) rotate(0deg) translateY(0); opacity: 1; }
+  30% { transform: translate(calc(var(--drift)*0.3), calc(var(--distance)*-0.3)) rotate(180deg); opacity: 0.9; }
+  100% { transform: translate(var(--drift), calc(var(--distance)*-1 + 40px)) rotate(720deg); opacity: 0; }
 }
 
 /* Creature reveal */
