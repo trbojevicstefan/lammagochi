@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { Float, OrbitControls } from '@react-three/drei';
+import { Float } from '@react-three/drei';
 
 const Creature = () => (
   <Float speed={1.4} rotationIntensity={0.3} floatIntensity={0.6}>
@@ -43,7 +43,6 @@ export const CreatureCanvas3D = ({ stage }: Props) => {
         <circleGeometry args={[2.7, 64]} />
         <meshStandardMaterial color="#0f172a" />
       </mesh>
-      <OrbitControls enablePan={false} enableZoom={false} maxPolarAngle={Math.PI * 0.58} minPolarAngle={Math.PI * 0.42} />
     </Canvas>
   );
 };

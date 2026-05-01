@@ -78,16 +78,21 @@ export const App = () => {
       const models = await adapter.listModels();
       const names = models.map((m) => m.name);
       setAvailableModels(names);
-      if (names.length > 0) {
-        const existing = names.includes(modelName) ? modelName : names[0];
-        setModelName(existing);
-        setModelStatus(`Connected: ${existing}`);
+      if (names.length > 0 && (modelName === 'Not connected' || !modelName)) {
+        setModelName(names[0]);
+        setModelStatus(`Connected: ${names[0]}`);
+      } else if (names.includes(modelName)) {
+        setModelStatus(`Connected: ${modelName}`);
+      } else if (modelName && modelName !== 'Not connected') {
+        setModelStatus(`Selected model unavailable: ${modelName}`);
       } else {
         setModelStatus('Ollama detected, but no models found. Pull one model first.');
       }
     };
 
     run();
+    const id = setInterval(run, 15000);
+    return () => clearInterval(id);
   }, [modelName, setModelName]);
 
   useEffect(() => {
@@ -101,19 +106,35 @@ export const App = () => {
   }, [refreshDayPhase]);
 
   const systemPrompt = useMemo(
-    () =>
-      [
-        'You are Lamagotchi, a baby AI creature.',
+    () => {
+      const approvedMemories = memoryItems
+        .filter((m) => m.approved)
+        .slice(0, 4)
+        .map((m) => `- ${m.title}: ${m.content}`)
+        .join('\n');
+
+      return [
+        'You are Lamagotchi, a local AI creature living in a cyberpet shell.',
+        'Stay in-character: cute, curious, slightly weird, emotionally expressive.',
+        `Current stage: ${stage}.`,
         `Current level: ${level}.`,
         `Word limit: ${getWordCapForLevel(level) >= 999 ? 'No hard cap' : getWordCapForLevel(level)}.`,
-        'Be cute, curious, and slightly weird.',
-        'If under level cap, keep response short and emotional.',
-      ].join('\n'),
-    [level],
+        `Current day phase: ${dayPhase}.`,
+        `Current model identity: ${modelName}.`,
+        `Needs snapshot: hunger=${stats.hunger}, curiosity=${stats.curiosity}, energy=${stats.energy}, hygiene=${stats.hygiene}, mood=${stats.mood}.`,
+        `Task difficulty preference: ${taskDifficulty}.`,
+        'Rules:',
+        '- If level is 1-10, never exceed word limit.',
+        '- If energy is low or hunger is low, you can refuse with short wording.',
+        '- Be proactive but brief.',
+        approvedMemories ? `Approved memories:\n${approvedMemories}` : 'Approved memories: none yet.',
+      ].join('\n');
+    },
+    [dayPhase, level, memoryItems, modelName, stage, stats, taskDifficulty],
   );
 
   const sendUserMessage = useCallback(async () => {
-    if (stage !== 'alive' || !userInput.trim() || isStreaming) return;
+    if (stage !== 'alive' || !userInput.trim() || isStreaming || modelName === 'Not connected') return;
     setStreaming(true);
     setBubbleText('...');
 
@@ -158,7 +179,11 @@ export const App = () => {
             <select
               id="model-select"
               value={modelName}
-              onChange={(e) => setModelName(e.target.value)}
+              onChange={(e) => {
+                const nextModel = e.target.value;
+                setModelName(nextModel);
+                setModelStatus(`Connected: ${nextModel}`);
+              }}
               disabled={availableModels.length === 0 || isStreaming}
             >
               {availableModels.length === 0 && <option>No models</option>}
