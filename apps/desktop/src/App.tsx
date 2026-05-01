@@ -4,6 +4,7 @@ import { OllamaHttpAdapter } from '@lamagotchi/ai-adapter';
 import { CreatureCanvas3D } from './CreatureCanvas3D';
 import { useAppStore } from './store';
 import { getWordCapForLevel } from '@lamagotchi/core';
+import { buildLamagotchiSystemPrompt } from './game/promptBuilder';
 
 const adapter = new OllamaHttpAdapter();
 
@@ -106,30 +107,16 @@ export const App = () => {
   }, [refreshDayPhase]);
 
   const systemPrompt = useMemo(
-    () => {
-      const approvedMemories = memoryItems
-        .filter((m) => m.approved)
-        .slice(0, 4)
-        .map((m) => `- ${m.title}: ${m.content}`)
-        .join('\n');
-
-      return [
-        'You are Lamagotchi, a local AI creature living in a cyberpet shell.',
-        'Stay in-character: cute, curious, slightly weird, emotionally expressive.',
-        `Current stage: ${stage}.`,
-        `Current level: ${level}.`,
-        `Word limit: ${getWordCapForLevel(level) >= 999 ? 'No hard cap' : getWordCapForLevel(level)}.`,
-        `Current day phase: ${dayPhase}.`,
-        `Current model identity: ${modelName}.`,
-        `Needs snapshot: hunger=${stats.hunger}, curiosity=${stats.curiosity}, energy=${stats.energy}, hygiene=${stats.hygiene}, mood=${stats.mood}.`,
-        `Task difficulty preference: ${taskDifficulty}.`,
-        'Rules:',
-        '- If level is 1-10, never exceed word limit.',
-        '- If energy is low or hunger is low, you can refuse with short wording.',
-        '- Be proactive but brief.',
-        approvedMemories ? `Approved memories:\n${approvedMemories}` : 'Approved memories: none yet.',
-      ].join('\n');
-    },
+    () =>
+      buildLamagotchiSystemPrompt({
+        stage,
+        level,
+        dayPhase,
+        modelName,
+        stats,
+        taskDifficulty,
+        memoryLines: memoryItems.filter((m) => m.approved).slice(0, 4).map((m) => `- ${m.title}: ${m.content}`),
+      }),
     [dayPhase, level, memoryItems, modelName, stage, stats, taskDifficulty],
   );
 
@@ -207,7 +194,7 @@ export const App = () => {
           <p className="pet-name">{petName}</p>
           <p className="bubble">{bubbleText}</p>
           <div className="canvas-wrap">
-            <CreatureCanvas3D stage={stage} />
+            <CreatureCanvas3D stage={stage} stats={stats} dayPhase={dayPhase} />
           </div>
         </Panel>
 
