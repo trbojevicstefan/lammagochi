@@ -2,8 +2,10 @@ import { create } from 'zustand';
 import { DEFAULT_STATS, addXp, applyDecay, clampStat, getWordCapForLevel, type Stats } from '@lamagotchi/core';
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
+type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
 
 interface AppState {
+  stage: LifecycleStage;
   petName: string;
   modelName: string;
   level: number;
@@ -14,6 +16,7 @@ interface AppState {
   lastTick: number;
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
+  hatch: () => void;
   setUserInput: (text: string) => void;
   performAction: (action: ActionType) => void;
   sendUserMessage: () => void;
@@ -40,6 +43,7 @@ const capWords = (text: string, level: number): string => {
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
+  stage: 'onboarding',
   petName: 'Noodle',
   modelName: 'Not connected',
   level: 1,
@@ -49,8 +53,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   userInput: '',
   lastTick: Date.now(),
 
-  setPetName: (name) => set({ petName: name || 'Noodle' }),
-  setModelName: (model) => set({ modelName: model || 'Not connected' }),
+  setPetName: (name) => set({ petName: name || 'Noodle', stage: 'named_egg' }),
+  setModelName: (model) => set({ modelName: model || 'Not connected', stage: 'onboarding' }),
+  hatch: () => {
+    const state = get();
+    if (state.stage !== 'named_egg') return;
+    set({ stage: 'hatching', bubbleText: '...' });
+    setTimeout(() => {
+      const s = get();
+      if (s.stage === 'hatching') {
+        set({ stage: 'alive', bubbleText: capWords('Hungry', s.level) });
+      }
+    }, 1500);
+  },
   setUserInput: (text) => set({ userInput: text }),
 
   performAction: (action) => {
@@ -110,13 +125,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   sendUserMessage: () => {
     const state = get();
+    if (state.stage !== 'alive') return;
     const response = capWords(moodWord(state.stats), state.level);
     set({ bubbleText: response || 'Hi', userInput: '' });
   },
 
   applyDecayTick: () => {
     const now = Date.now();
-    const { lastTick, stats } = get();
+    const { lastTick, stats, stage } = get();
+    if (stage !== 'alive') return;
     const minutes = (now - lastTick) / 60000;
     if (minutes < 1) return;
     set({ stats: applyDecay(stats, minutes), lastTick: now });

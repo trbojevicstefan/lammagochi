@@ -54,6 +54,16 @@ body {
   color: #7ef9e2;
 }
 
+.stage-pill {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 250, 255, 0.35);
+  background: rgba(125, 250, 255, 0.1);
+  font-size: 0.85rem;
+}
+
 .bubble {
   background: rgba(125, 250, 255, 0.12);
   border: 1px solid rgba(125, 250, 255, 0.35);
@@ -103,6 +113,12 @@ button {
 
 button {
   cursor: pointer;
+}
+
+button:disabled,
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (max-width: 900px) {

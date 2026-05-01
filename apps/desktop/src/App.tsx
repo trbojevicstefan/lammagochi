@@ -3,6 +3,7 @@ import { Panel } from '@lamagotchi/ui';
 import { OllamaHttpAdapter } from '@lamagotchi/ai-adapter';
 import { CreatureCanvas3D } from './CreatureCanvas3D';
 import { useAppStore } from './store';
+import { getWordCapForLevel } from '@lamagotchi/core';
 
 const adapter = new OllamaHttpAdapter();
 
@@ -13,6 +14,7 @@ export const App = () => {
   const [modelStatus, setModelStatus] = useState('Checking Ollama...');
 
   const {
+    stage,
     petName,
     modelName,
     level,
@@ -22,6 +24,7 @@ export const App = () => {
     userInput,
     setPetName,
     setModelName,
+    hatch,
     setUserInput,
     performAction,
     sendUserMessage,
@@ -66,11 +69,15 @@ export const App = () => {
           <div className="naming-row">
             <input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Name your egg" />
             <button onClick={() => setPetName(nameInput)}>Set Name</button>
+            <button onClick={hatch} disabled={stage !== 'named_egg'}>
+              Hatch
+            </button>
           </div>
+          <p className="stage-pill">Stage: {stage}</p>
           <p className="pet-name">{petName}</p>
           <p className="bubble">{bubbleText}</p>
           <div className="canvas-wrap">
-            <CreatureCanvas3D />
+            <CreatureCanvas3D stage={stage} />
           </div>
         </Panel>
 
@@ -79,6 +86,7 @@ export const App = () => {
           <p>Model: {modelName}</p>
           <p>Level: {level}</p>
           <p>XP: {xp}</p>
+          <p>Word cap: {getWordCapForLevel(level) >= 999 ? 'Sentence mode' : getWordCapForLevel(level)}</p>
           <ul className="stats-list">
             {Object.entries(stats).map(([key, value]) => (
               <li key={key}>
@@ -93,7 +101,7 @@ export const App = () => {
       <footer className="action-zone">
         <div className="action-row">
           {ACTIONS.map((action) => (
-            <button key={action} onClick={() => performAction(action)}>
+            <button key={action} onClick={() => performAction(action)} disabled={stage !== 'alive'}>
               {action}
             </button>
           ))}
@@ -107,8 +115,11 @@ export const App = () => {
             onKeyDown={(e) => {
               if (e.key === 'Enter') sendUserMessage();
             }}
+            disabled={stage !== 'alive'}
           />
-          <button onClick={sendUserMessage}>Chat</button>
+          <button onClick={sendUserMessage} disabled={stage !== 'alive'}>
+            Chat
+          </button>
         </div>
       </footer>
     </main>
