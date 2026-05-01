@@ -5,6 +5,7 @@ import { CreatureCanvas3D } from './CreatureCanvas3D';
 import { useAppStore } from './store';
 import { getWordCapForLevel } from '@lamagotchi/core';
 import { buildLamagotchiSystemPrompt } from './game/promptBuilder';
+import { chooseAutonomousPrompt } from './game/simulationTick';
 
 const adapter = new OllamaHttpAdapter();
 
@@ -105,6 +106,15 @@ export const App = () => {
     const id = setInterval(() => refreshDayPhase(), 30000);
     return () => clearInterval(id);
   }, [refreshDayPhase]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (stage !== 'alive' || isStreaming) return;
+      const prompt = chooseAutonomousPrompt(stats, dayPhase);
+      if (prompt) setBubbleText(capWords(prompt, level) || prompt);
+    }, 20000);
+    return () => clearInterval(id);
+  }, [capWords, dayPhase, isStreaming, level, setBubbleText, stage, stats]);
 
   const systemPrompt = useMemo(
     () =>

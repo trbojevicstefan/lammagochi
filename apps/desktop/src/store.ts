@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import { DEFAULT_STATS, addXp, applyDecay, clampStat, getWordCapForLevel, type Stats } from '@lamagotchi/core';
+import { DEFAULT_STATS, addXp, clampStat, getWordCapForLevel, type Stats } from '@lamagotchi/core';
+import { applySimulationTick, resolveDayPhase, type DayPhase } from './game/simulationTick';
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
 type MemoryItem = { id: string; title: string; content: string; approved: boolean; createdAt: number };
 type TaskDifficulty = 'easy' | 'medium' | 'hard';
 type JournalEntry = { id: string; type: 'daydream' | 'task' | 'system'; content: string; createdAt: number };
-type DayPhase = 'morning' | 'day' | 'evening' | 'night';
 
 interface AppState {
   stage: LifecycleStage;
@@ -57,14 +57,6 @@ const capWords = (text: string, level: number): string => {
     .filter(Boolean)
     .slice(0, cap)
     .join(' ');
-};
-
-const resolveDayPhase = (date: Date): DayPhase => {
-  const hour = date.getHours();
-  if (hour >= 6 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 18) return 'day';
-  if (hour >= 18 && hour < 23) return 'evening';
-  return 'night';
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -281,15 +273,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (stage !== 'alive') return;
     const minutes = (now - lastTick) / 60000;
     if (minutes < 1) return;
-    const decayed = applyDecay(stats, minutes);
-    const adjusted = { ...decayed };
-    if (dayPhase === 'night') {
-      adjusted.energy = clampStat(adjusted.energy - 1);
-      adjusted.mood = clampStat(adjusted.mood - 1);
-    }
-    if (dayPhase === 'morning') {
-      adjusted.curiosity = clampStat(adjusted.curiosity + 1);
-    }
+    const adjusted = applySimulationTick(stats, minutes, dayPhase);
     set({ stats: adjusted, lastTick: now });
   },
   refreshDayPhase: () => {
