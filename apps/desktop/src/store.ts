@@ -251,34 +251,42 @@ export const useAppStore = create<AppState>((set, get) => ({
       showToast('info', '📅 Daily Check-in!', '+10 bonus XP', 3000);
     }
 
+    // Track journal detail for richer entries
+    let journalDetail = '';
+
     if (action === 'feed') {
       stats.hunger = clampStat(stats.hunger + 14);
       stats.mood = clampStat(stats.mood + 6);
       stats.knowledge = clampStat(stats.knowledge + 3);
       xpGain = 8;
       counts.feeds += 1;
+      journalDetail = '🍎 Ate a delicious meal. Hunger satisfied!';
     }
     if (action === 'play') {
       stats.mood = clampStat(stats.mood + 10);
       stats.energy = clampStat(stats.energy - 7);
       stats.boredom = clampStat(stats.boredom - 12);
       xpGain = 7;
+      journalDetail = '🎾 Played energetically. So much fun!';
     }
     if (action === 'sleep') {
       stats.energy = clampStat(stats.energy + 18);
       stats.mood = clampStat(stats.mood + 4);
       xpGain = 5;
+      journalDetail = '😴 Took a restful nap. Feeling refreshed!';
     }
     if (action === 'clean') {
       stats.hygiene = clampStat(stats.hygiene + 18);
       stats.mood = clampStat(stats.mood + 5);
       xpGain = 6;
       counts.cleans += 1;
+      journalDetail = '🫧 Sparkling clean after a nice bath!';
     }
     if (action === 'teach') {
       stats.knowledge = clampStat(stats.knowledge + 6);
       stats.curiosity = clampStat(stats.curiosity + 4);
       xpGain = 8;
+      journalDetail = '📚 Learned something new. Knowledge grows!';
     }
     if (action === 'task') {
       if (stats.energy < 30 || stats.hunger < 25) {
@@ -319,25 +327,28 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const prevLevel = state.level;
     const progression = addXp(state.xp, state.level, xpGain);
-    const response = capWords(moodWord(stats), progression.level);
+    const emojiMap: Record<string, string> = { feed: '🍎 ', play: '🎾 ', sleep: '😴 ', clean: '✨ ', teach: '📚 ', task: '⚡ ', daydream: '💭 ' };
+    const response = emojiMap[action] + capWords(moodWord(stats), progression.level);
 
     // Journal entries
     const journalType: JournalEntry['type'] | null =
       action === 'daydream' ? 'daydream' : action === 'task' ? 'task' : null;
-    const nextJournalEntries: JournalEntry[] = journalType
-      ? [
-          {
-            id: `jr_${Date.now()}`,
-            type: journalType,
-            content:
-              journalType === 'daydream'
-                ? 'Daydreamed about new skills and memories.'
-                : `Completed a ${state.taskDifficulty} task and learned from it.`,
-            createdAt: Date.now(),
-          },
-          ...state.journalEntries,
-        ].slice(0, 60)
-      : state.journalEntries;
+    // Richer journal entries
+    const entryContent = journalType === 'daydream'
+      ? '💭 Daydreamed about new skills and memories. Imagination wandering...'
+      : journalType === 'task'
+        ? `⚡ Completed a ${state.taskDifficulty} task — learned through doing!`
+        : journalDetail || `Interacted via ${action}`;
+
+    const nextJournalEntries: JournalEntry[] = [
+      {
+        id: `jr_${Date.now()}`,
+        type: (journalType || 'system') as JournalEntry['type'],
+        content: entryContent,
+        createdAt: Date.now(),
+      },
+      ...state.journalEntries,
+    ].slice(0, 60);
 
     // Evolution check
     const newEvoStage = getEvolutionStage(progression.level);
