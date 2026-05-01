@@ -3,31 +3,35 @@
    ============================================= */
 
 /* --- Fonts --- */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* --- Design Tokens --- */
+/* --- Design Tokens (Hatchling 16-bit Retro-Future Arcade) --- */
 :root {
-  --bg-deep: #060b14;
-  --bg-panel: rgba(10, 20, 40, 0.85);
-  --bg-panel-hover: rgba(15, 28, 50, 0.9);
-  --border-subtle: rgba(34, 211, 238, 0.18);
-  --border-glow: rgba(34, 211, 238, 0.4);
-  --border-active: rgba(94, 234, 212, 0.7);
-  --text-primary: #e2f5ff;
-  --text-secondary: #94b8d4;
-  --text-muted: #5b7a99;
-  --accent-teal: #5eead4;
+  --bg-deep: #020617;
+  --bg-panel: rgba(15, 23, 42, 0.9);
+  --bg-panel-hover: rgba(30, 41, 59, 0.9);
+  --border-subtle: rgba(99, 102, 241, 0.25);
+  --border-glow: rgba(99, 102, 241, 0.5);
+  --border-active: rgba(129, 140, 248, 0.8);
+  --text-primary: #e0e7ff;
+  --text-secondary: #a5b4fc;
+  --text-muted: #6366a1;
   --accent-cyan: #22d3ee;
+  --accent-teal: #5eead4;
+  --accent-orange: #f97316;
   --accent-amber: #f59e0b;
+  --accent-pink: #ec4899;
   --accent-rose: #f472b6;
-  --accent-violet: #c084fc;
+  --accent-violet: #818cf8;
+  --accent-indigo: #6366f1;
   --accent-green: #4ade80;
   --accent-red: #f87171;
-  --shadow-glow-teal: 0 0 20px rgba(34, 211, 238, 0.15);
+  --shadow-glow-indigo: 0 0 20px rgba(99, 102, 241, 0.2);
   --shadow-glow-amber: 0 0 20px rgba(245, 158, 11, 0.15);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  --pixel-border: 3px;
+  --radius-sm: 0px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
   --radius-xl: 20px;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -79,8 +83,8 @@ code, .mono {
   gap: 0;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 60% 50% at 30% 20%, rgba(34, 211, 238, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 50% 40% at 70% 80%, rgba(94, 234, 212, 0.04) 0%, transparent 50%),
+    repeating-linear-gradient(0deg, rgba(99,102,241,0.03) 0px, transparent 2px, transparent 32px, rgba(99,102,241,0.03) 33px),
+    repeating-linear-gradient(90deg, rgba(99,102,241,0.03) 0px, transparent 2px, transparent 32px, rgba(99,102,241,0.03) 33px),
     var(--bg-deep);
 }
 
@@ -90,9 +94,9 @@ code, .mono {
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  background: rgba(8, 18, 32, 0.7);
+  background: rgba(15, 23, 42, 0.92);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: var(--pixel-border) solid #1e1b4b;
   z-index: 10;
 }
 
@@ -106,7 +110,7 @@ code, .mono {
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan));
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -186,18 +190,63 @@ code, .mono {
 /* --- Creature Viewport --- */
 .creature-panel {
   position: relative;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-subtle);
+  background: var(--bg-deep);
+  border: var(--pixel-border) solid #1e1b4b;
   border-radius: var(--radius-lg);
   overflow: hidden;
   min-height: 0;
-  box-shadow: var(--shadow-glow-teal);
+  box-shadow:
+    inset 0 0 60px rgba(99, 102, 241, 0.08),
+    0 0 30px rgba(99, 102, 241, 0.1);
 }
 
 .canvas-wrap {
   width: 100%;
   height: 100%;
   min-height: 280px;
+}
+
+/* Layered viewport: 3D underneath, pixel pet on top */
+.viewport-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+    var(--bg-deep);
+}
+
+.viewport-3d-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.viewport-pet-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hatch status text inside viewport */
+.hatch-status-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+  animation: hatch-text-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes hatch-text-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 /* --- Chat Bubble Overlay --- */
@@ -270,12 +319,13 @@ code, .mono {
 /* --- Side Panel --- */
 .side-panel {
   background: var(--bg-panel);
-  border: 1px solid var(--border-subtle);
+  border: var(--pixel-border) solid #1e1b4b;
   border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  box-shadow: inset 0 0 40px rgba(99,102,241,0.05);
 }
 
 /* --- Tabs --- */
@@ -579,9 +629,9 @@ code, .mono {
 
 .action-zone {
   padding: 10px 16px;
-  background: rgba(8, 18, 32, 0.7);
+  background: rgba(15, 23, 42, 0.92);
   backdrop-filter: blur(12px);
-  border-top: 1px solid var(--border-subtle);
+  border-top: var(--pixel-border) solid #1e1b4b;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -628,24 +678,33 @@ textarea {
 button {
   background: var(--bg-panel);
   color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
+  border: var(--pixel-border) solid #312e81;
   border-radius: var(--radius-sm);
   padding: 8px 14px;
   font-family: inherit;
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s var(--ease-out);
+  transition: all 0.15s var(--ease-out);
+  position: relative;
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--border-glow);
+  border-color: var(--accent-violet);
   background: var(--bg-panel-hover);
+  box-shadow: 0 0 12px rgba(99,102,241,0.25);
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 button:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
+  filter: grayscale(0.5);
 }
 
 .btn-primary {
@@ -755,7 +814,7 @@ button:disabled {
   margin: 0;
   font-size: 1.8rem;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan));
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
