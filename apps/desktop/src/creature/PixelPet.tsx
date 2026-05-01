@@ -32,8 +32,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   const isNight = dayPhase === 'night';
 
   // Animation state (lerped)
-  const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0,tailWag:0,idleVariant:0,pupilSize:1 });
-  const tgtRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0 });
+  const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0,tailWag:0,idleVariant:0,pupilSize:1,headTilt:0,noseTwitch:0,eyeDartX:0,shimmerPos:0 });
   const [renderTick, setRender] = useState(0);
   const frameRef = useRef(0);
   const rafRef = useRef(0);
@@ -49,6 +48,16 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   const idleVariantType = useRef<'normal'|'stretch'|'look'|'wiggle'>('normal');
   const nextIdleVariantAt = useRef(4000 + Math.random()*6000);
   const tailWagIntensity = useRef(0);
+  // Micro-animation timers
+  const headTiltTimer = useRef(0);
+  const headTiltTarget = useRef(0);
+  const nextHeadTiltAt = useRef(5000+Math.random()*8000);
+  const noseTwitchTimer = useRef(0);
+  const nextNoseTwitchAt = useRef(3000+Math.random()*5000);
+  const eyeDartTimer = useRef(0);
+  const eyeDartTarget = useRef(0);
+  const nextEyeDartAt = useRef(2000+Math.random()*4000);
+  const shimmerTimer = useRef(0);
   const animStart = useRef(0);
   const prevAnim = useRef<PetAnim>('idle');
   const flashTimeout = useRef<ReturnType<typeof setTimeout>>();
@@ -112,6 +121,39 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
       tailWagIntensity.current = lerp(tailWagIntensity.current, tailTarget, 0.05);
       aRef.current.tailWag = Math.sin(t*4.5)*tailWagIntensity.current;
 
+      // === HEAD TILT (occasional gentle tilt) ===
+      headTiltTimer.current += dt*1000;
+      if(headTiltTimer.current >= nextHeadTiltAt.current){
+        headTiltTarget.current = (Math.random()-0.5)*0.04;
+        headTiltTimer.current = 0;
+        nextHeadTiltAt.current = 5000+Math.random()*10000;
+      }
+      // Fade tilt back to 0 over time
+      headTiltTarget.current *= 0.995;
+      aRef.current.headTilt = lerp(aRef.current.headTilt, headTiltTarget.current, 0.05);
+
+      // === NOSE TWITCH (tiny rapid pulse) ===
+      noseTwitchTimer.current += dt*1000;
+      if(noseTwitchTimer.current >= nextNoseTwitchAt.current){
+        noseTwitchTimer.current = 0;
+        nextNoseTwitchAt.current = 4000+Math.random()*8000;
+      }
+      const nosePhase = noseTwitchTimer.current < 120 ? Math.sin(noseTwitchTimer.current/120*Math.PI)*0.3 : 0;
+      aRef.current.noseTwitch = lerp(aRef.current.noseTwitch, nosePhase, 0.4);
+
+      // === EYE DART (pupils shift slightly) ===
+      eyeDartTimer.current += dt*1000;
+      if(eyeDartTimer.current >= nextEyeDartAt.current){
+        eyeDartTarget.current = (Math.random()-0.5)*2;
+        eyeDartTimer.current = 0;
+        nextEyeDartAt.current = 1500+Math.random()*3500;
+      }
+      aRef.current.eyeDartX = lerp(aRef.current.eyeDartX, eyeDartTarget.current, 0.15);
+
+      // === BODY SHIMMER (light line sweeps across) ===
+      shimmerTimer.current += dt*1000;
+      aRef.current.shimmerPos = (Math.sin(shimmerTimer.current*0.6)*0.5+0.5);
+
       // === PUPIL DILATION (bigger when happy/excited, smaller when sad/sleepy) ===
       const pupilTarget = anim==='happy'||anim==='excited'||anim==='playing'?1.3:anim==='sleepy'||anim==='craving'?0.8:1.0;
       aRef.current.pupilSize = lerp(aRef.current.pupilSize, pupilTarget, 0.1);
@@ -161,7 +203,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   // Interaction spark
   useEffect(()=>{ if(interactionSpark>0&&interactionSpark!==lastSpark.current){ lastSpark.current=interactionSpark; aRef.current.flash=1; if(flashTimeout.current)clearTimeout(flashTimeout.current); flashTimeout.current=setTimeout(()=>{aRef.current.flash=0;},400); } },[interactionSpark]);
 
-  const { bx,by,sx,sy,wiggle,sway,flash,blink,earL,earR,antic,tailWag,idleVariant,pupilSize } = aRef.current;
+  const { bx,by,sx,sy,wiggle,sway,flash,blink,earL,earR,antic,tailWag,idleVariant,pupilSize,headTilt,noseTwitch,eyeDartX,shimmerPos } = aRef.current;
   const brightness = isNight?0.55+flash*0.45:1+flash*2.5;
   const contrast = resolvedAnim==='evolving'?1.3+flash*0.5:flash>0.05?2+flash*3:1;
 
@@ -199,12 +241,11 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
       {/* Floor shadow */}
       <div className="pixel-pet-shadow" style={{transform:`scaleX(${1-by*0.04})translateX(${-sway*0.3}px)`,opacity:(resolvedAnim==='excited'||resolvedAnim==='playing')?0.12:0.45*(isNight?0.55:1)}}/>
 
-      {/* Mood particles */}
-      {isHappy && <EmotionParticles type="hearts" count={3} />}
-      {resolvedAnim==='excited' && <EmotionParticles type="sparkles" count={5} />}
-      {isSad && <EmotionParticles type="sweat" count={1} />}
-      {isSleepy && <EmotionParticles type="z" count={2} />}
-      {resolvedAnim==='evolving' && <EmotionParticles type="stars" count={6} />}
+      {/* Mood particles — slow, subtle, away from face */}
+      {isHappy && <EmotionParticles type="hearts" count={1} />}
+      {isExcited && <EmotionParticles type="sparkles" count={2} />}
+      {isSleepy && <EmotionParticles type="z" count={1} />}
+      {isEvolving && <EmotionParticles type="stars" count={3} />}
 
       <svg viewBox="0 0 64 64" className="pixel-pet-svg" shapeRendering="crispEdges">
         {/* Cosmic aura */}
@@ -214,7 +255,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
         </g>)}
 
         {/* Main sprite — anticipation lean + all transforms */}
-        <g style={{transform:`translate(32px,56px)scale(${sx},${sy})translate(-32px,-56px)translateY(${by-antic}px)translateX(${wiggle-sway}px)`}}>
+        <g style={{transform:`translate(32px,56px)scale(${sx},${sy})translate(-32px,-56px)rotate(${headTilt}deg)translateY(${by-antic}px)translateX(${wiggle-sway}px)`}}>
           {/* === EGG === */}
           {si.isEgg&&(<g>
             <ellipse cx="32" cy="40" rx="14" ry="17" fill="#f8fafc"/>
@@ -267,6 +308,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
             <rect x={32-si.bodyW/2} y={22} width={si.bodyW} height={si.bodyH} rx={si.isInfant?9:7} fill={bodyMain}/>
             <rect x={32-si.bodyW/2+2} y={20} width={si.bodyW-4} height={si.bodyH+4} rx={si.isInfant?9:7} fill={bodyMain}/>
             <rect x={32-si.bodyW/2+2} y={22} width={si.bodyW-8} height={5} rx="2" fill={bodyLight} opacity="0.7"/>
+            <rect x={32-si.bodyW/2+2+shimmerPos*(si.bodyW-12)} y={24} width={4} height={2} fill="white" opacity={0.06+Math.sin(shimmerPos*Math.PI)*0.04} rx="1"/>
             <rect x={32-si.bodyW/2} y={28} width={4} height={si.bodyH-12} rx="1" fill={bodyDark} opacity="0.6"/>
 
             {/* Ninja headband */}
@@ -316,8 +358,8 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
                 </>);})()}
                 {/* Pupils + catchlights */}
                 {blink<0.6&&(<>
-                  <rect x={23+antic} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={37+antic} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={23+antic+eyeDartX} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={37+antic+eyeDartX} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
                   <rect x={25} y={(isHappy?34:33)} width="2" height="2" fill="white"/>
                   <rect x={39} y={(isHappy?34:33)} width="2" height="2" fill="white"/>
                 </>)}
@@ -415,9 +457,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
         .pixel-pet-svg{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;z-index:2;}
         .pixel-pet-shadow{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:90px;height:12px;background:rgba(0,0,0,0.3);border-radius:50%;filter:blur(7px);z-index:1;}
         @keyframes aura-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes float-up{0%{transform:translateY(0)scale(1);opacity:0.8}100%{transform:translateY(-40px)scale(0.5);opacity:0}}
-        @keyframes float-up-sway{0%{transform:translateY(0)translateX(0);opacity:0.6}50%{transform:translateX(10px)}100%{transform:translateY(-50px)translateX(-5px);opacity:0}}
-        @keyframes sweat-drop{0%{transform:translateY(0);opacity:0.5}100%{transform:translateY(20px);opacity:0}}
+        @keyframes float-up{0%{transform:translateY(0)scale(0.5);opacity:0}10%{opacity:0.35}30%{opacity:0.2}100%{transform:translateY(-80px)scale(0.3);opacity:0}}
       `}</style>
     </div>
   );
@@ -431,9 +471,9 @@ const EmotionParticles = ({ type, count }: { type: string; count: number }) => (
   <div style={{position:'absolute',inset:0,zIndex:5,pointerEvents:'none',overflow:'hidden'}}>
     {Array.from({length:count}).map((_,i)=>(
       <span key={i} style={{
-        position:'absolute',left:`${25+Math.random()*50}%`,top:`${40+Math.random()*30}%`,
-        color:PARTICLE_COLORS[type]||'#fff',fontSize:`${10+Math.random()*8}px`,
-        animation:`${type==='sweat'?'sweat-drop':'float-up'} ${1.2+Math.random()*1.5}s ease-out ${Math.random()*0.8}s infinite`,
+        position:'absolute',left:`${40+Math.random()*20}%`,top:`${60+Math.random()*15}%`,
+        color:PARTICLE_COLORS[type]||'#fff',fontSize:`${7+Math.random()*5}px`,
+        animation:`float-up ${4+Math.random()*3}s ease-out ${i*2+Math.random()*2}s infinite`,
         opacity:0,
       }}>{PARTICLE_ICONS[type]||'•'}</span>
     ))}
