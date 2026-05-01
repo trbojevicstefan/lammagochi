@@ -8,6 +8,7 @@ import { showToast } from './ui/Toast';
 import { getNewlyUnlocked } from './game/stageAbilities';
 import { applyItemEffects, type GameItem } from './game/items';
 import { recordEvent, updatePreferences, createEmptyPreferences, generatePetThought, type BehaviorEvent, type PetPreferences } from './game/behaviorMemory';
+import { generatePersonality, getPersonalityChatter, getPersonalityReaction, type PetPersonality } from './game/personality';
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
@@ -86,6 +87,7 @@ interface AppState {
   currentSkin: string;
   behaviorEvents: BehaviorEvent[];
   preferences: PetPreferences;
+  personality: PetPersonality;
   // Actions
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
@@ -167,6 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentSkin: 'none',
   behaviorEvents: [],
   preferences: createEmptyPreferences(),
+  personality: generatePersonality(),
 
   setPetName: (name) => {
     soundEffects.chirp();
@@ -195,12 +198,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       content: greeting,
       timestamp: Date.now(),
     };
+    const personality = generatePersonality();
     set({
       stage: 'alive',
       bubbleText: greeting,
       hatchProgress: 1,
       evolutionStage: 'baby',
       chatHistory: [msg],
+      personality,
     });
   },
 
@@ -592,6 +597,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         currentSkin: typeof parsed.currentSkin === 'string' ? parsed.currentSkin : 'none',
         behaviorEvents: Array.isArray(parsed.behaviorEvents) ? (parsed.behaviorEvents as BehaviorEvent[]) : [],
         preferences: (parsed.preferences as PetPreferences) ?? createEmptyPreferences(),
+        personality: (parsed.personality as PetPersonality) ?? generatePersonality(),
       });
     } catch {
       // ignore invalid local state
@@ -622,6 +628,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentSkin: state.currentSkin,
       behaviorEvents: state.behaviorEvents.slice(0, 20),
       preferences: state.preferences,
+      personality: state.personality,
     };
     localStorage.setItem('lamagotchi.v2', JSON.stringify(snapshot));
   },

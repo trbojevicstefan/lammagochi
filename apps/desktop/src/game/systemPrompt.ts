@@ -2,6 +2,7 @@ import type { Stats } from '@lamagotchi/core';
 import { getWordCapForLevel } from '@lamagotchi/core';
 import { getEvolutionStage, getEvolutionName } from './evolution';
 import { generatePetThought, type PetPreferences, type BehaviorEvent } from './behaviorMemory';
+import { getPersonalityChatter, type PetPersonality } from './personality';
 
 interface PromptInput {
   petName: string;
@@ -87,9 +88,16 @@ export const generateHeartbeatPrompt = (
   lastInteractionMinutes: number,
   prefs?: PetPreferences,
   events?: BehaviorEvent[],
+  personality?: PetPersonality,
 ): string | null => {
   // Don't spam — only generate if conditions warrant it
-  if (lastInteractionMinutes < 3) return null;
+  if (lastInteractionMinutes < 2) return null;
+
+  // Personality-driven chatter (highest priority for variety)
+  if (personality) {
+    const chatter = getPersonalityChatter(personality);
+    if (chatter) return chatter;
+  }
 
   // Behavior memory thoughts (pet remembers and reflects)
   if (prefs && events) {
