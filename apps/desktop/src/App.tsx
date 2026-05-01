@@ -622,7 +622,13 @@ export const App = () => {
           <input
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
-            placeholder={`Talk to ${petName}...`}
+            placeholder={
+              stats.hunger < 25 ? `${petName} looks hungry...` :
+              stats.energy < 25 ? `${petName} seems sleepy...` :
+              stats.hygiene < 25 ? `${petName} needs a wash...` :
+              stats.boredom > 70 ? `${petName} wants to play...` :
+              `Talk to ${petName}...`
+            }
             onKeyDown={(e) => {
               if (e.key === 'Enter') sendUserMessage();
             }}
