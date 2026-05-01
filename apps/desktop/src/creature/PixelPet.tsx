@@ -357,75 +357,54 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
 
             {/* ====== FACE GROUP — Clean, emotion-rich ====== */}
             <g style={{transform:`translateY(${isSad?0.5:0}px)`}}>
-              {/* EYEBROWS */}
+              {/* EYEBROWS — expression-driven */}
               {!si.isEgg&&(<>
-                <g transform={browAngle}>
-                  <rect x="20" y={30+browY} width="8" height="2" fill={bodyDark} rx="1"/>
+                <g transform={`rotate(${exBrowA} 24 30)`}>
+                  <rect x="20" y={30+exBrowY} width="8" height="2" fill={bodyDark} rx="1"/>
                 </g>
-                <g transform={browAngleR}>
-                  <rect x="36" y={30+browY} width="8" height="2" fill={bodyDark} rx="1"/>
+                <g transform={`rotate(${-exBrowA} 40 30)`}>
+                  <rect x="36" y={30+exBrowY} width="8" height="2" fill={bodyDark} rx="1"/>
                 </g>
               </>)}
 
-              {/* EYES */}
-              {isSleepy?(<>
-                <rect x="21" y="34" width="8" height="2" fill="#1e1b4b" rx="1"/>
-                <rect x="35" y="34" width="8" height="2" fill="#1e1b4b" rx="1"/>
+              {/* EYES — expression-driven */}
+              {exEyeH<=2.5?(<>
+                <rect x="21" y={exEyeY} width="8" height={exEyeH} fill="#1e1b4b" rx="1"/>
+                <rect x="35" y={exEyeY} width="8" height={exEyeH} fill="#1e1b4b" rx="1"/>
               </>):(<>
-                {/* Eye whites — shorter when happy (squinting) */}
-                {(()=>{const eh=isHappy?5:isSad?7:8;const ey=isHappy?33:isSad?32:31;return(<>
-                  <rect x="20" y={ey} width="10" height={eh*(1-blink*0.95)} fill="white" rx="1"/>
-                  <rect x="34" y={ey} width="10" height={eh*(1-blink*0.95)} fill="white" rx="1"/>
-                </>);})()}
-                {/* Pupils + catchlights */}
+                <rect x="20" y={exEyeY} width="10" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
+                <rect x="34" y={exEyeY} width="10" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
+                {exSquint>0.1&&(<>
+                  <rect x="20" y={exEyeY} width="10" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
+                  <rect x="34" y={exEyeY} width="10" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
+                </>)}
                 {blink<0.6&&(<>
-                  <rect x={23+antic+eyeDartX} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={37+antic+eyeDartX} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={25} y={(isHappy?34:33)} width="2" height="2" fill="white"/>
-                  <rect x={39} y={(isHappy?34:33)} width="2" height="2" fill="white"/>
-                </>)}
-                {/* Subtle eye sparkle when excited */}
-                {isExcited&&(<>
-                  <rect x="27" y="30" width="2" height="2" fill="white" opacity="0.6"/>
-                  <rect x="41" y="30" width="2" height="2" fill="white" opacity="0.6"/>
+                  <rect x={23+antic+eyeDartX} y={exEyeY+2} width={5*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={37+antic+eyeDartX} y={exEyeY+2} width={5*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={25} y={exEyeY+2} width="2" height="2" fill="white"/>
+                  <rect x={39} y={exEyeY+2} width="2" height="2" fill="white"/>
                 </>)}
               </>)}
 
-              {/* Tears (crying when sad) */}
-              {isSad&&!isSleepy&&(<>
-                <rect x="25" y="38" width="2" height="4" fill="#60a5fa" rx="1" opacity="0.7"/>
-                <rect x="39" y="38" width="2" height="4" fill="#60a5fa" rx="1" opacity="0.7"/>
-              </>)}
-
-              {/* Blush */}
-              {!si.isEgg&&<g opacity={isHappy||isExcited?0.75:isSad?0.4:0.15}>
+              {/* Blush — expression-driven opacity */}
+              {!si.isEgg&&<g opacity={exBlushA}>
                 <rect x="17" y="38" width="5" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
                 <rect x="42" y="38" width="5" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
               </g>}
 
-              {/* MOUTH — clean pixel shapes */}
-              {isHappy?<>
-                <rect x="29" y="42" width="6" height="3" fill="#1e1b4b" rx="1"/>
-                <rect x="28" y="41" width="1.5" height="2" fill="#1e1b4b" rx="0.5"/>
-                <rect x="34.5" y="41" width="1.5" height="2" fill="#1e1b4b" rx="0.5"/>
-              </>:isExcited?<>
-                <rect x="28" y="41" width="8" height="6" fill="#1e1b4b" rx="1"/>
-                <rect x="29" y="43" width="6" height="3" fill="#ef4444" rx="0.5"/>
-              </>:isSad?<>
-                <rect x="29" y="44" width="6" height="1.5" fill="#1e1b4b" rx="0.5"/>
-              </>:isSleepy?<>
-                <rect x="27" y="43" width="10" height="3.5" fill="#1e1b4b" rx="1.5"/>
-              </>:isEating?<>
-                <rect x="28" y="42" width="8" height="3" fill="#1e1b4b" rx="0.5"/>
-              </>:isCleaning?<>
-                <rect x="30" y="43" width="4" height="1.5" fill="#1e1b4b" rx="0.5"/>
-              </>:isLearning?<>
-                <rect x="31" y="43" width="2.5" height="1.5" fill="#1e1b4b" rx="0.5"/>
-              </>:isEvolving?<>
-                <rect x="27" y="42" width="10" height="5" fill="#1e1b4b" rx="1"/>
-              </>:<>
-                <rect x="30" y="43" width="4" height="1.5" fill="#1e1b4b" rx="0.5"/>
-              </>}
+              {/* MOUTH — expression-driven width, height, position, curve */}
+              {exMouthCurve>0.5?(<>
+                <rect x={32-Math.round(exMouthW/2)} y={exMouthY} width={Math.round(exMouthW)} height={Math.round(exMouthH)} fill="#1e1b4b" rx="1"/>
+                <rect x={32-Math.round(exMouthW/2)-1.5} y={exMouthY-1} width="1.5" height="2" fill="#1e1b4b" rx="0.5"/>
+                <rect x={32+Math.round(exMouthW/2)} y={exMouthY-1} width="1.5" height="2" fill="#1e1b4b" rx="0.5"/>
+              </>):exMouthCurve<-0.5?(<>
+                <rect x={32-Math.round(exMouthW/2)} y={exMouthY} width={Math.round(exMouthW)} height={Math.round(exMouthH)} fill="#1e1b4b" rx="0.5"/>
+              </>):exMouthH>4?(<>
+                <rect x={32-Math.round(exMouthW/2)} y={exMouthY} width={Math.round(exMouthW)} height={Math.round(exMouthH)} fill="#1e1b4b" rx="1"/>
+                <rect x={32-Math.round(exMouthW/2)+1} y={exMouthY+Math.round(exMouthH/2)} width={Math.round(exMouthW)-2} height={Math.round(exMouthH/2)-0.5} fill="#ef4444" rx="0.5"/>
+              </>):(<>
+                <rect x={32-Math.round(exMouthW/2)} y={exMouthY} width={Math.round(exMouthW)} height={Math.round(exMouthH)} fill="#1e1b4b" rx="0.5"/>
+              </>)}
             </g>
 
             {/* Hands */}
