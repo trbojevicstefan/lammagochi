@@ -3,6 +3,7 @@ import { DEFAULT_STATS, addXp, applyDecay, clampStat, getWordCapForLevel, type S
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
+type MemoryItem = { id: string; title: string; content: string; approved: boolean; createdAt: number };
 
 interface AppState {
   stage: LifecycleStage;
@@ -13,6 +14,7 @@ interface AppState {
   stats: Stats;
   bubbleText: string;
   isStreaming: boolean;
+  memoryItems: MemoryItem[];
   userInput: string;
   lastTick: number;
   setPetName: (name: string) => void;
@@ -22,6 +24,8 @@ interface AppState {
   setBubbleText: (text: string) => void;
   setStreaming: (value: boolean) => void;
   performAction: (action: ActionType) => void;
+  feedKnowledge: (text: string) => void;
+  setMemoryApproval: (id: string, approved: boolean) => void;
   clearUserInput: () => void;
   hydrateFromLocal: () => void;
   persistToLocal: () => void;
@@ -56,6 +60,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   stats: DEFAULT_STATS,
   bubbleText: 'Hungry',
   isStreaming: false,
+  memoryItems: [],
   userInput: '',
   lastTick: Date.now(),
 
@@ -135,6 +140,44 @@ export const useAppStore = create<AppState>((set, get) => ({
       bubbleText: response,
     });
   },
+  feedKnowledge: (text) => {
+    const state = get();
+    if (state.stage !== 'alive') return;
+    const clean = text.trim();
+    if (!clean) return;
+
+    const snippet = clean.slice(0, 160);
+    const id = `mem_${Date.now()}`;
+    const memoryItem: MemoryItem = {
+      id,
+      title: `Fed note (${Math.min(clean.length, 160)} chars)`,
+      content: snippet,
+      approved: false,
+      createdAt: Date.now(),
+    };
+
+    const stats = {
+      ...state.stats,
+      hunger: clampStat(state.stats.hunger + 8),
+      curiosity: clampStat(state.stats.curiosity + 6),
+      knowledge: clampStat(state.stats.knowledge + 5),
+      mood: clampStat(state.stats.mood + 4),
+    };
+
+    const progression = addXp(state.xp, state.level, 9);
+    set({
+      stats,
+      xp: progression.xp,
+      level: progression.level,
+      bubbleText: capWords('More', progression.level),
+      memoryItems: [memoryItem, ...state.memoryItems].slice(0, 30),
+    });
+  },
+  setMemoryApproval: (id, approved) => {
+    const state = get();
+    const memoryItems = state.memoryItems.map((m) => (m.id === id ? { ...m, approved } : m));
+    set({ memoryItems });
+  },
 
   hydrateFromLocal: () => {
     const raw = localStorage.getItem('lamagotchi.v1');
@@ -149,6 +192,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         xp: typeof parsed.xp === 'number' ? parsed.xp : 0,
         stats: parsed.stats ?? DEFAULT_STATS,
         bubbleText: parsed.bubbleText ?? 'Hungry',
+        memoryItems: Array.isArray(parsed.memoryItems) ? (parsed.memoryItems as MemoryItem[]) : [],
         lastTick: typeof parsed.lastTick === 'number' ? parsed.lastTick : Date.now(),
       });
     } catch {
@@ -165,6 +209,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       xp: state.xp,
       stats: state.stats,
       bubbleText: state.bubbleText,
+      memoryItems: state.memoryItems,
       lastTick: state.lastTick,
     };
     localStorage.setItem('lamagotchi.v1', JSON.stringify(snapshot));

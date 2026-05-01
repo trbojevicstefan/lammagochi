@@ -13,6 +13,7 @@ export const App = () => {
   const [nameInput, setNameInput] = useState('Noodle');
   const [modelStatus, setModelStatus] = useState('Checking Ollama...');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [feedText, setFeedText] = useState('');
 
   const {
     stage,
@@ -23,6 +24,7 @@ export const App = () => {
     stats,
     bubbleText,
     isStreaming,
+    memoryItems,
     userInput,
     setPetName,
     setModelName,
@@ -32,6 +34,8 @@ export const App = () => {
     setStreaming,
     clearUserInput,
     performAction,
+    feedKnowledge,
+    setMemoryApproval,
     hydrateFromLocal,
     persistToLocal,
     applyDecayTick,
@@ -183,6 +187,43 @@ export const App = () => {
               <li key={key}>
                 <span>{key}</span>
                 <span>{value}</span>
+              </li>
+            ))}
+          </ul>
+          <hr className="sep" />
+          <h3>Feed Knowledge</h3>
+          <textarea
+            value={feedText}
+            onChange={(e) => setFeedText(e.target.value)}
+            placeholder="Paste note or markdown snippet..."
+            rows={5}
+            disabled={stage !== 'alive' || isStreaming}
+          />
+          <button
+            onClick={() => {
+              feedKnowledge(feedText);
+              setFeedText('');
+            }}
+            disabled={stage !== 'alive' || !feedText.trim() || isStreaming}
+          >
+            Digest
+          </button>
+          <hr className="sep" />
+          <h3>Memory Queue</h3>
+          <ul className="memory-list">
+            {memoryItems.length === 0 && <li className="memory-empty">No memories yet</li>}
+            {memoryItems.map((item) => (
+              <li key={item.id}>
+                <p>{item.title}</p>
+                <small>{item.content}</small>
+                <div className="memory-actions">
+                  <button onClick={() => setMemoryApproval(item.id, true)} disabled={item.approved}>
+                    Approve
+                  </button>
+                  <button onClick={() => setMemoryApproval(item.id, false)} disabled={!item.approved}>
+                    Unapprove
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
