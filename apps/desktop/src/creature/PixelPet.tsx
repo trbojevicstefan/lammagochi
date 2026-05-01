@@ -34,7 +34,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   // Animation state (lerped)
   // Expression blend targets (game-quality smooth transitions)
   const exprRef = useRef({ eyeH:8, eyeY:31, squint:0, browY:0, browAngle:0, mouthW:4, mouthH:1.5, mouthY:43, mouthCurve:0, blushA:0.2, pupilH:5 });
-  const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0,tailWag:0,idleVariant:0,pupilSize:1,headTilt:0,noseTwitch:0,eyeDartX:0,shimmerPos:0 });
+  const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0,tailWag:0,idleVariant:0,pupilSize:1,headTilt:0,noseTwitch:0,eyeDartX:0,shimmerPos:0,scratchHand:0 });
   const [renderTick, setRender] = useState(0);
   const frameRef = useRef(0);
   const rafRef = useRef(0);
@@ -47,7 +47,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   const earTwitchTarget = useRef<'none'|'left'|'right'>('none');
   const nextEarTwitchAt = useRef(3000 + Math.random()*5000);
   const idleVariantTimer = useRef(0);
-  const idleVariantType = useRef<'normal'|'stretch'|'look'|'wiggle'>('normal');
+  const idleVariantType = useRef<'normal'|'stretch'|'look'|'wiggle'|'sniff'|'scratch'>('normal');
   const nextIdleVariantAt = useRef(4000 + Math.random()*6000);
   const tailWagIntensity = useRef(0);
   // Micro-animation timers
@@ -103,19 +103,24 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
       if(anim==='idle'){
         idleVariantTimer.current += dt*1000;
         if(idleVariantTimer.current >= nextIdleVariantAt.current){
-          const variants: Array<'normal'|'stretch'|'look'|'wiggle'> = ['normal','stretch','look','wiggle'];
+          const variants: Array<'normal'|'stretch'|'look'|'wiggle'|'sniff'|'scratch'> = ['normal','stretch','look','wiggle','sniff','scratch'];
           idleVariantType.current = variants[Math.floor(Math.random()*variants.length)];
           idleVariantTimer.current = 0;
           nextIdleVariantAt.current = 5000 + Math.random()*10000;
         }
         // Apply variant effect
         const variantPhase = idleVariantTimer.current < 1500 ? idleVariantTimer.current/1500 : 1 - Math.min(1,(idleVariantTimer.current-1500)/500);
-        const vi = idleVariantType.current === 'stretch' ? variantPhase*2 : idleVariantType.current === 'wiggle' ? variantPhase*1.5 : 0;
+        const vi = idleVariantType.current === 'stretch' ? variantPhase*2 : idleVariantType.current === 'wiggle' ? variantPhase*1.5 : idleVariantType.current === 'scratch' ? variantPhase : 0;
         aRef.current.idleVariant = lerp(aRef.current.idleVariant, vi, 0.15);
-        // Look-around: subtle pupil dart
-        if(idleVariantType.current === 'look' && idleVariantTimer.current < 1500){
-          // Pupil dart effect applied via wiggle below
+        // Sniff: nose twitch + head tilt
+        if(idleVariantType.current === 'sniff' && idleVariantTimer.current < 1200){
+          aRef.current.noseTwitch = Math.sin(idleVariantTimer.current/150*Math.PI)*0.5;
+          aRef.current.headTilt = Math.sin(idleVariantTimer.current/300*Math.PI)*0.03;
         }
+        // Scratch: one hand reaches up
+        if(idleVariantType.current === 'scratch'){
+          aRef.current.scratchHand = variantPhase * 8;
+        } else { aRef.current.scratchHand = lerp(aRef.current.scratchHand, 0, 0.1); }
       } else { aRef.current.idleVariant = lerp(aRef.current.idleVariant,0,0.1); }
 
       // === TAIL WAG (intensity based on mood/happiness) ===
@@ -224,7 +229,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   // Interaction spark
   useEffect(()=>{ if(interactionSpark>0&&interactionSpark!==lastSpark.current){ lastSpark.current=interactionSpark; aRef.current.flash=1; if(flashTimeout.current)clearTimeout(flashTimeout.current); flashTimeout.current=setTimeout(()=>{aRef.current.flash=0;},400); } },[interactionSpark]);
 
-  const { bx,by,sx,sy,wiggle,sway,flash,blink,earL,earR,antic,tailWag,idleVariant,pupilSize,headTilt,noseTwitch,eyeDartX,shimmerPos } = aRef.current;
+  const { bx,by,sx,sy,wiggle,sway,flash,blink,earL,earR,antic,tailWag,idleVariant,pupilSize,headTilt,noseTwitch,eyeDartX,shimmerPos,scratchHand } = aRef.current;
   const brightness = isNight?0.55+flash*0.45:1+flash*2.5;
   const contrast = resolvedAnim==='evolving'?1.3+flash*0.5:flash>0.05?2+flash*3:1;
 
@@ -398,10 +403,10 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
               </>)}
             </g>
 
-            {/* Hands */}
+            {/* Hands — scratch motion on right hand */}
             {si.hasHands&&(<g>
               <rect x="8" y={34+(resolvedAnim==='excited'||resolvedAnim==='playing'?-8:0)} width="8" height="8" rx="2" fill={si.isSage?'#6366f1':skin==='astronaut'?'#f1f5f9':bodyLight}/>
-              <rect x="48" y={34+(resolvedAnim==='excited'||resolvedAnim==='playing'?-8:0)} width="8" height="8" rx="2" fill={si.isSage?'#6366f1':skin==='astronaut'?'#f1f5f9':bodyLight}/>
+              <rect x={48-scratchHand*0.3} y={34+(resolvedAnim==='excited'||resolvedAnim==='playing'?-8:0)-scratchHand} width="8" height="8" rx="2" fill={si.isSage?'#6366f1':skin==='astronaut'?'#f1f5f9':bodyLight}/>
             </g>)}
 
             {/* Astronaut helmet */}
