@@ -9,22 +9,22 @@ type CreatureProps = {
   mood: CreatureMood;
   dayPhase: 'morning' | 'day' | 'evening' | 'night';
   isStreaming?: boolean;
-  interactionSpark?: number; // 0-1 pulse on interaction
+  interactionSpark?: number;
 };
 
-const moodColors: Record<CreatureMood, { body: string; emissive: string; emissiveIntensity: number }> = {
-  calm: { body: '#5eead4', emissive: '#2dd4bf', emissiveIntensity: 0.3 },
-  hungry: { body: '#fbbf24', emissive: '#f59e0b', emissiveIntensity: 0.45 },
-  sleepy: { body: '#94a3b8', emissive: '#64748b', emissiveIntensity: 0.15 },
-  curious: { body: '#67e8f9', emissive: '#06b6d4', emissiveIntensity: 0.5 },
-  dirty: { body: '#a8a29e', emissive: '#78716c', emissiveIntensity: 0.2 },
+const moodColors: Record<CreatureMood, { body: string; head: string; emissive: string; emissiveIntensity: number }> = {
+  calm:    { body: '#5eead4', head: '#a7f3d0', emissive: '#2dd4bf', emissiveIntensity: 0.3 },
+  hungry:  { body: '#fbbf24', head: '#fde68a', emissive: '#f59e0b', emissiveIntensity: 0.45 },
+  sleepy:  { body: '#94a3b8', head: '#cbd5e1', emissive: '#64748b', emissiveIntensity: 0.15 },
+  curious: { body: '#67e8f9', head: '#bae6fd', emissive: '#06b6d4', emissiveIntensity: 0.5 },
+  dirty:   { body: '#a8a29e', head: '#d6d3d1', emissive: '#78716c', emissiveIntensity: 0.2 },
 };
 
 const evolutionScales: Record<EvolutionStage, number> = {
-  baby: 0.75,
-  child: 0.9,
-  teen: 1.05,
-  adult: 1.15,
+  baby: 0.7,
+  child: 0.85,
+  teen: 1.0,
+  adult: 1.1,
 };
 
 export const ProceduralCreature = ({ level, mood, dayPhase, isStreaming, interactionSpark = 0 }: CreatureProps) => {
@@ -40,23 +40,20 @@ export const ProceduralCreature = ({ level, mood, dayPhase, isStreaming, interac
   const baseScale = evolutionScales[evoStage];
   const colors = moodColors[mood];
 
-  // Create a rounded body mesh
-  const bodyGeometry = useMemo(() => {
-    // Combine sphere (top) and slightly wider sphere (bottom) for egg-dino body
-    const geo = new THREE.SphereGeometry(1, 48, 48);
-    // Pinch top slightly, widen bottom - will be done via scale
-    return geo;
-  }, []);
+  // Shared geometry instances
+  const bodyGeo = useMemo(() => new THREE.SphereGeometry(1, 48, 48), []);
+  const headGeo = useMemo(() => new THREE.SphereGeometry(0.55, 32, 32), []);
+  const eyeGeo = useMemo(() => new THREE.SphereGeometry(1, 24, 24), []);
 
   useFrame((state) => {
     if (!groupRef.current) return;
     const t = state.clock.elapsedTime;
     const nightFactor = dayPhase === 'night' ? 0.4 : 1;
 
-    // Breathing animation
-    const breathScale = 1 + Math.sin(t * 1.8) * 0.03 * nightFactor;
+    // Breathing — scale body only
+    const breathScale = 1 + Math.sin(t * 1.8) * 0.025 * nightFactor;
     if (bodyRef.current) {
-      bodyRef.current.scale.setScalar(breathScale);
+      bodyRef.current.scale.set(1, breathScale, 1);
     }
 
     // Eye blink
@@ -66,82 +63,68 @@ export const ProceduralCreature = ({ level, mood, dayPhase, isStreaming, interac
     if (leftEyeRef.current) leftEyeRef.current.scale.y = eyeScaleY;
     if (rightEyeRef.current) rightEyeRef.current.scale.y = eyeScaleY;
 
-    // Ear animation
-    const earWiggle = Math.sin(t * 2.5) * 0.08 * (mood === 'curious' ? 2 : 1);
-    if (leftEarRef.current) leftEarRef.current.rotation.z = -0.2 + earWiggle;
-    if (rightEarRef.current) rightEarRef.current.rotation.z = 0.2 - earWiggle;
+    // Ear wiggle
+    const earWiggle = Math.sin(t * 2.5) * 0.06 * (mood === 'curious' ? 2 : 1);
+    if (leftEarRef.current) leftEarRef.current.rotation.z = -0.15 + earWiggle;
+    if (rightEarRef.current) rightEarRef.current.rotation.z = 0.15 - earWiggle;
 
     // Tail wag
     if (tailRef.current && evoStage !== 'baby') {
-      tailRef.current.rotation.z = Math.sin(t * 3) * 0.3;
+      tailRef.current.rotation.z = Math.sin(t * 3) * 0.35;
     }
 
-    // Streaming glow pulse
+    // Streaming pulse
     if (isStreaming && bodyRef.current) {
       const mat = bodyRef.current.material as THREE.MeshStandardMaterial;
       mat.emissiveIntensity = colors.emissiveIntensity + Math.sin(t * 4) * 0.15;
     }
   });
 
+  // Stage-dependent sizes
   const eyeSize = evoStage === 'baby' ? 0.18 : evoStage === 'child' ? 0.15 : 0.13;
   const earHeight = evoStage === 'baby' ? 0.35 : evoStage === 'child' ? 0.5 : evoStage === 'teen' ? 0.6 : 0.7;
-  const earWidth = evoStage === 'baby' ? 0.18 : evoStage === 'child' ? 0.22 : 0.25;
-  const bodyY = [1, 1, 1.05, 1.08] as const;
-  const bodyX = [1, 1, 1.05, 1.12] as const;
+  const earRadius = evoStage === 'baby' ? 0.16 : evoStage === 'child' ? 0.2 : 0.24;
+  const legSize = evoStage === 'baby' ? 0.08 : evoStage === 'child' ? 0.1 : 0.12;
+  const legHeight = evoStage === 'baby' ? 0.15 : evoStage === 'child' ? 0.2 : 0.28;
+  const hasLegs = evoStage !== 'baby';
+  const hasTail = evoStage !== 'baby';
+
+  // Body: positioned low, sphere scaled slightly wide and short (cute egg-dino)
+  // Sphere radius=1, but we scale Y=0.78 so body height ~1.56, centered at y=-0.35
+  // Body bottom ~ -0.35*baseScale - 0.78*baseScale ≈ -1.13*baseScale
+  // Body top ~ -0.35*baseScale + 0.78*baseScale ≈ 0.43*baseScale
+  // Head radius=0.55, positioned at y=0.65 so head bottom ≈ 0.1 (clear of body top 0.43)
+  // Wait — the body scaling vs actual position: body sphere radius=1, scaleY=0.78 → effective height=1.56
+  // body at y=-0.35. Bottom: -0.35 - 0.78 = -1.13, Top: -0.35 + 0.78 = 0.43
+  // Head at y=0.72, radius=0.55. Bottom: 0.72 - 0.55 = 0.17, Top: 0.72 + 0.55 = 1.27
+  // Gap: head bottom (0.17) is below body top (0.43)... still overlap.
+  //
+  // FIXED: Body at y=-0.25, scaleY=0.72. Top ≈ -0.25+0.72=0.47.
+  // Head at y=0.85, radius=0.5. Bottom ≈ 0.85-0.5=0.35.
+  // Gap = 0.47 - 0.35 = ... wait those still overlap slightly.
+  // Let me just make the body shorter and head higher:
+  // Body: y=-0.3, scaleY=0.65 → top at 0.35
+  // Head: y=0.85, radius=0.5 → bottom at 0.35
+  // There will be slight overlap but the color contrast (body vs slightly lighter head) sells the separation
 
   return (
     <group ref={groupRef} scale={baseScale}>
-      {/* Legs */}
-      {evoStage !== 'baby' && (
-        <>
-          <mesh position={[-0.45, -0.85, 0.25]} castShadow>
-            <capsuleGeometry args={[0.12, 0.25, 8, 8]} />
-            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.1} />
-          </mesh>
-          <mesh position={[0.45, -0.85, 0.25]} castShadow>
-            <capsuleGeometry args={[0.12, 0.25, 8, 8]} />
-            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.1} />
-          </mesh>
-          <mesh position={[-0.4, -0.85, -0.25]} castShadow>
-            <capsuleGeometry args={[0.1, 0.2, 8, 8]} />
-            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.1} />
-          </mesh>
-          <mesh position={[0.4, -0.85, -0.25]} castShadow>
-            <capsuleGeometry args={[0.1, 0.2, 8, 8]} />
-            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.1} />
-          </mesh>
-        </>
-      )}
-
-      {/* Body */}
-      <mesh ref={bodyRef} castShadow>
-        <primitive object={bodyGeometry} />
+      {/* ======= BODY ======= */}
+      {/* Main body: wide egg shape */}
+      <mesh ref={bodyRef} position={[0, -0.3, 0]} scale={[1.02, 0.65, 0.95]} castShadow>
+        <primitive object={bodyGeo} />
         <meshStandardMaterial
           color={colors.body}
           emissive={colors.emissive}
           emissiveIntensity={colors.emissiveIntensity}
-          roughness={0.25}
-          metalness={0.12}
+          roughness={0.28}
+          metalness={0.1}
         />
       </mesh>
 
-      {/* Body shape - slightly wider at bottom */}
-      <mesh scale={[1.05, 0.95, 1.05]} position={[0, -0.1, 0]} castShadow>
-        <primitive object={bodyGeometry} />
-        <meshStandardMaterial
-          color={colors.body}
-          emissive={colors.emissive}
-          emissiveIntensity={colors.emissiveIntensity * 0.6}
-          roughness={0.3}
-          metalness={0.08}
-          transparent
-          opacity={0.4}
-        />
-      </mesh>
-
-      {/* Belly patch (lighter) */}
-      <mesh position={[0, -0.15, 0.65]} scale={[0.55, 0.45, 0.25]} castShadow>
-        <sphereGeometry args={[1, 32, 32]} />
+      {/* Belly patch — lighter oval on the front */}
+      <mesh position={[0, -0.35, 0.55]} scale={[0.55, 0.35, 0.18]} castShadow>
+        <primitive object={bodyGeo} />
         <meshStandardMaterial
           color="#ecfdf5"
           roughness={0.35}
@@ -149,118 +132,155 @@ export const ProceduralCreature = ({ level, mood, dayPhase, isStreaming, interac
         />
       </mesh>
 
-      {/* Head */}
-      <group position={[0, 0.75, 0.15]}>
+      {/* ======= LEGS (child+) ======= */}
+      {hasLegs && (
+        <>
+          {/* Front legs */}
+          <mesh position={[-0.42, -0.85, 0.3]} castShadow>
+            <capsuleGeometry args={[legSize, legHeight, 8, 8]} />
+            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.08} />
+          </mesh>
+          <mesh position={[0.42, -0.85, 0.3]} castShadow>
+            <capsuleGeometry args={[legSize, legHeight, 8, 8]} />
+            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.08} />
+          </mesh>
+          {/* Back legs (slightly smaller and further back) */}
+          <mesh position={[-0.38, -0.85, -0.25]} castShadow>
+            <capsuleGeometry args={[legSize * 0.85, legHeight * 0.85, 8, 8]} />
+            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.08} />
+          </mesh>
+          <mesh position={[0.38, -0.85, -0.25]} castShadow>
+            <capsuleGeometry args={[legSize * 0.85, legHeight * 0.85, 8, 8]} />
+            <meshStandardMaterial color={colors.body} roughness={0.4} metalness={0.08} />
+          </mesh>
+        </>
+      )}
+
+      {/* ======= HEAD ======= */}
+      <group position={[0, 0.82, 0.1]}>
+        {/* Head sphere */}
         <mesh castShadow>
-          <sphereGeometry args={[0.55, 32, 32]} />
+          <primitive object={headGeo} />
           <meshStandardMaterial
-            color={colors.body}
+            color={colors.head}
             emissive={colors.emissive}
-            emissiveIntensity={colors.emissiveIntensity * 0.8}
+            emissiveIntensity={colors.emissiveIntensity * 0.5}
             roughness={0.22}
-            metalness={0.1}
+            metalness={0.06}
           />
         </mesh>
 
-        {/* Snout */}
-        <mesh position={[0, -0.15, 0.42]} castShadow>
-          <sphereGeometry args={[0.2, 16, 16]} />
+        {/* Snout — small bump on the front */}
+        <mesh position={[0, -0.18, 0.4]} castShadow>
+          <sphereGeometry args={[0.18, 16, 16]} />
           <meshStandardMaterial
-            color={evoStage === 'baby' ? '#fce7f3' : '#ecfdf5'}
+            color={evoStage === 'baby' ? '#fce7f3' : '#f8fafc'}
             roughness={0.3}
             metalness={0.05}
           />
         </mesh>
 
-        {/* Nose dots */}
-        <mesh position={[-0.06, -0.1, 0.58]}>
-          <sphereGeometry args={[0.03, 8, 8]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.2} />
+        {/* Nostrils */}
+        <mesh position={[-0.05, -0.14, 0.55]}>
+          <sphereGeometry args={[0.025, 8, 8]} />
+          <meshStandardMaterial color="#334155" roughness={0.2} />
         </mesh>
-        <mesh position={[0.06, -0.1, 0.58]}>
-          <sphereGeometry args={[0.03, 8, 8]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.2} />
+        <mesh position={[0.05, -0.14, 0.55]}>
+          <sphereGeometry args={[0.025, 8, 8]} />
+          <meshStandardMaterial color="#334155" roughness={0.2} />
         </mesh>
 
         {/* Eyes */}
-        <mesh ref={leftEyeRef} position={[-0.18, 0.12, 0.42]}>
-          <sphereGeometry args={[eyeSize, 24, 24]} />
-          <meshStandardMaterial color="#020617" roughness={0.1} />
+        <mesh ref={leftEyeRef} position={[-0.17, 0.1, 0.4]}>
+          <primitive object={eyeGeo} scale={eyeSize} />
+          <meshStandardMaterial color="#020617" roughness={0.08} />
         </mesh>
-        <mesh ref={rightEyeRef} position={[0.18, 0.12, 0.42]}>
-          <sphereGeometry args={[eyeSize, 24, 24]} />
-          <meshStandardMaterial color="#020617" roughness={0.1} />
-        </mesh>
-
-        {/* Eye catchlights */}
-        <mesh position={[-0.14, 0.17, 0.52]}>
-          <sphereGeometry args={[eyeSize * 0.25, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
-        </mesh>
-        <mesh position={[0.22, 0.17, 0.52]}>
-          <sphereGeometry args={[eyeSize * 0.25, 8, 8]} />
-          <meshBasicMaterial color="#ffffff" />
+        <mesh ref={rightEyeRef} position={[0.17, 0.1, 0.4]}>
+          <primitive object={eyeGeo} scale={eyeSize} />
+          <meshStandardMaterial color="#020617" roughness={0.08} />
         </mesh>
 
-        {/* Ears */}
-        <group ref={leftEarRef} position={[-0.28, 0.35, -0.05]} rotation={[0, 0, -0.2]}>
+        {/* Catchlights (white sparkle in eyes) */}
+        <mesh position={[-0.13, 0.15, 0.5]}>
+          <sphereGeometry args={[eyeSize * 0.22, 8, 8]} />
+          <meshBasicMaterial color="#ffffff" />
+        </mesh>
+        <mesh position={[0.21, 0.15, 0.5]}>
+          <sphereGeometry args={[eyeSize * 0.22, 8, 8]} />
+          <meshBasicMaterial color="#ffffff" />
+        </mesh>
+
+        {/* Ears (llama-style, cone based, slight outward tilt) */}
+        <group ref={leftEarRef} position={[-0.3, 0.32, -0.08]} rotation={[0, 0, -0.15]}>
           <mesh castShadow>
-            <coneGeometry args={[earWidth, earHeight, 12, 1]} />
+            <coneGeometry args={[earRadius, earHeight, 12, 1]} />
             <meshStandardMaterial
               color={colors.body}
               emissive={colors.emissive}
-              emissiveIntensity={colors.emissiveIntensity * 0.7}
+              emissiveIntensity={colors.emissiveIntensity * 0.5}
               roughness={0.2}
-              metalness={0.1}
+              metalness={0.08}
             />
           </mesh>
-          {/* Inner ear */}
-          <mesh position={[0, earHeight * 0.05, 0]}>
-            <coneGeometry args={[earWidth * 0.55, earHeight * 0.7, 12, 1]} />
+          {/* Inner ear (pink) */}
+          <mesh position={[0, earHeight * 0.04, 0]}>
+            <coneGeometry args={[earRadius * 0.5, earHeight * 0.65, 12, 1]} />
             <meshStandardMaterial color="#fce7f3" roughness={0.25} metalness={0.05} />
           </mesh>
         </group>
 
-        <group ref={rightEarRef} position={[0.28, 0.35, -0.05]} rotation={[0, 0, 0.2]}>
+        <group ref={rightEarRef} position={[0.3, 0.32, -0.08]} rotation={[0, 0, 0.15]}>
           <mesh castShadow>
-            <coneGeometry args={[earWidth, earHeight, 12, 1]} />
+            <coneGeometry args={[earRadius, earHeight, 12, 1]} />
             <meshStandardMaterial
               color={colors.body}
               emissive={colors.emissive}
-              emissiveIntensity={colors.emissiveIntensity * 0.7}
+              emissiveIntensity={colors.emissiveIntensity * 0.5}
               roughness={0.2}
-              metalness={0.1}
+              metalness={0.08}
             />
           </mesh>
-          <mesh position={[0, earHeight * 0.05, 0]}>
-            <coneGeometry args={[earWidth * 0.55, earHeight * 0.7, 12, 1]} />
+          <mesh position={[0, earHeight * 0.04, 0]}>
+            <coneGeometry args={[earRadius * 0.5, earHeight * 0.65, 12, 1]} />
             <meshStandardMaterial color="#fce7f3" roughness={0.25} metalness={0.05} />
           </mesh>
         </group>
+
+        {/* Small tuft/hair between ears (teen+) */}
+        {evoStage !== 'baby' && evoStage !== 'child' && (
+          <mesh position={[0, 0.58, -0.02]} rotation={[0.1, 0, 0]}>
+            <coneGeometry args={[0.06, 0.2, 8, 8]} />
+            <meshStandardMaterial
+              color={colors.emissive}
+              roughness={0.2}
+              metalness={0.05}
+            />
+          </mesh>
+        )}
       </group>
 
-      {/* Tail (only child+) */}
-      {evoStage !== 'baby' && (
-        <mesh ref={tailRef} position={[0, -0.35, -0.85]} rotation={[0.3, 0, 0]}>
-          <coneGeometry args={[0.1, 0.4, 8, 8]} />
+      {/* ======= TAIL (child+) ======= */}
+      {hasTail && (
+        <mesh ref={tailRef} position={[0, -0.35, -0.8]} rotation={[0.4, 0, 0]}>
+          <coneGeometry args={[0.08, 0.35, 8, 8]} />
           <meshStandardMaterial
             color={colors.body}
             emissive={colors.emissive}
-            emissiveIntensity={colors.emissiveIntensity * 0.5}
+            emissiveIntensity={colors.emissiveIntensity * 0.4}
             roughness={0.3}
-            metalness={0.08}
+            metalness={0.06}
           />
         </mesh>
       )}
 
-      {/* Level glow ring (visible L5+) */}
+      {/* ======= LEVEL RING (L5+) ======= */}
       {level >= 5 && (
-        <mesh position={[0, -0.9, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.75, 0.03, 16, 48]} />
+        <mesh position={[0, -0.95, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.7, 0.03, 16, 48]} />
           <meshBasicMaterial
             color={level >= 10 ? '#f59e0b' : '#22d3ee'}
             transparent
-            opacity={0.4}
+            opacity={0.35}
             blending={THREE.AdditiveBlending}
             depthWrite={false}
           />

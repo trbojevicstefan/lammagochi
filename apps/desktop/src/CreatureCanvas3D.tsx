@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import type { Stats } from '@lamagotchi/core';
 import { deriveCreatureMood } from './game/creatureBehavior';
@@ -27,7 +26,7 @@ export const CreatureCanvas3D = ({
 
   return (
     <Canvas
-      camera={{ position: [0, 0.2, 3.8], fov: 45 }}
+      camera={{ position: [0, -0.15, 3.8], fov: 45 }}
       shadows
       gl={{ antialias: true, alpha: false }}
       dpr={[1, 1.5]}
