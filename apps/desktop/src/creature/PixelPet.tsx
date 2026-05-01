@@ -1,441 +1,352 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CreatureMood } from '../game/creatureBehavior';
 import { getLevelScale, type PetSkin } from '../game/evolution';
 
 /* ================================================================
-   PixelPet v3 — 60fps, per-level granular scaling, skin system
-   Hatchling 16-bit Retro-Future Arcade design language
+   PixelPet v4 — AAAA Game Animation Quality
+   Blink system, eyebrows, ear twitch, anticipation/follow-through,
+   mood particles, micro-expressions, premium skin details
    ================================================================ */
 
 type PetAnim = 'idle'|'happy'|'sleepy'|'eating'|'cleaning'|'playing'|'learning'|'daydreaming'|'excited'|'evolving'|'craving';
+type Props = { level:number; mood:CreatureMood; dayPhase:'morning'|'day'|'evening'|'night'; isStreaming?:boolean; interactionSpark?:number; skin?:PetSkin; actionAnimation?:string|null; };
 
-type Props = {
-  level: number;
-  mood: CreatureMood;
-  dayPhase: 'morning' | 'day' | 'evening' | 'night';
-  isStreaming?: boolean;
-  interactionSpark?: number;
-  skin?: PetSkin;
-  actionAnimation?: string | null;
-};
+const moodToAnim: Record<CreatureMood, PetAnim> = { calm:'idle', hungry:'craving', sleepy:'sleepy', curious:'excited', dirty:'craving' };
+const lerp = (a:number,b:number,t:number) => a+(b-a)*Math.min(t,1);
 
-const moodToAnim: Record<CreatureMood, PetAnim> = {
-  calm: 'idle', hungry: 'craving', sleepy: 'sleepy', curious: 'excited', dirty: 'craving',
-};
-
-const stage = (lvl: number) => ({
-  isEgg: lvl <= 1, isInfant: lvl >= 2 && lvl <= 5, isToddler: lvl >= 6 && lvl <= 10,
-  isLearner: lvl >= 11 && lvl <= 18, isCompanion: lvl >= 19 && lvl <= 30, isSage: lvl >= 31,
-  hasFeet: lvl >= 4, hasCrest: lvl >= 7, hasHands: lvl >= 12, hasWisdom: lvl >= 20, hasAura: lvl >= 25,
-});
-
-// Smooth easing
-const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.min(t, 1);
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-
-export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark = 0, skin = 'none', actionAnimation }: Props) => {
+export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=0, skin='none', actionAnimation }: Props) => {
   const levelScale = getLevelScale(level);
-  // Smooth animation state — lerp toward target
-  const animRef = useRef({ bx: 0, by: 0, sx: 1, sy: 1, wiggle: 0, sway: 0, flash: 0, evolvePulse: 0 });
-  const targetRef = useRef({ bx: 0, by: 0, sx: 1, sy: 1, wiggle: 0, sway: 0, flash: 0 });
+  const st = (lvl:number) => ({ isEgg:lvl<=1, hasFeet:lvl>=4, hasCrest:lvl>=7, hasHands:lvl>=12, hasWisdom:lvl>=20, hasAura:lvl>=25, isSage:lvl>=31 });
+  const si = st(level);
+  const resolvedAnim: PetAnim = (actionAnimation as PetAnim) || moodToAnim[mood];
+  const isNight = dayPhase === 'night';
+
+  // Animation state (lerped)
+  const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0 });
+  const tgtRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0 });
   const [renderTick, setRender] = useState(0);
   const frameRef = useRef(0);
   const rafRef = useRef(0);
   const lastSpark = useRef(0);
-  const animStartRef = useRef(0);
-  const prevAnimRef = useRef<PetAnim>('idle');
+  const blinkTimer = useRef(0);
+  const blinkState = useRef<'open'|'closing'|'closed'|'opening'>('open');
+  const blinkCount = useRef(0);
+  const nextBlinkAt = useRef(2000 + Math.random()*3000);
+  const earTwitchTimer = useRef(0);
+  const earTwitchTarget = useRef<'none'|'left'|'right'>('none');
+  const nextEarTwitchAt = useRef(3000 + Math.random()*5000);
+  const animStart = useRef(0);
+  const prevAnim = useRef<PetAnim>('idle');
   const flashTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-  const st = stage(level);
-  const resolvedAnim: PetAnim = (actionAnimation as PetAnim) || moodToAnim[mood];
-  const isNight = dayPhase === 'night';
+  // Detect animation changes for anticipation
+  useEffect(() => { if(resolvedAnim!==prevAnim.current){ animStart.current=performance.now(); prevAnim.current=resolvedAnim; aRef.current.antic=0; } },[resolvedAnim]);
 
-  // Detect animation change for smooth transitions
-  useEffect(() => {
-    if (resolvedAnim !== prevAnimRef.current) {
-      animStartRef.current = performance.now();
-      prevAnimRef.current = resolvedAnim;
-    }
-  }, [resolvedAnim]);
-
-  // 60fps game loop with delta-time smoothing
+  // 60fps loop
   useEffect(() => {
     let last = performance.now();
-    const tick = (now: number) => {
-      const dt = Math.min((now - last) / 1000, 0.05); // cap delta
-      last = now;
+    const tick = (now:number) => {
+      const dt = Math.min((now-last)/1000, 0.05); last=now;
       frameRef.current += dt;
-
       const t = frameRef.current;
       const anim = resolvedAnim;
-      const elapsed = (now - animStartRef.current) / 1000;
-      const blend = easeOut(Math.min(elapsed / 0.3, 1)); // 300ms blend into new animation
+      const elapsed = (now - animStart.current)/1000;
 
-      // Compute target animation values
-      const tg = { bx: 0, by: 0, sx: 1, sy: 1, wiggle: 0, sway: 0, flash: 0 };
+      // === BLINK SYSTEM ===
+      blinkTimer.current += dt*1000;
+      if(blinkState.current==='open' && blinkTimer.current >= nextBlinkAt.current){
+        blinkState.current='closing'; blinkTimer.current=0;
+      }
+      if(blinkState.current==='closing' && blinkTimer.current>40){ blinkState.current='closed'; blinkTimer.current=0; blinkCount.current++; }
+      if(blinkState.current==='closed' && blinkTimer.current>60+(blinkCount.current%3===0?80:0)){ blinkState.current='opening'; blinkTimer.current=0; }
+      if(blinkState.current==='opening' && blinkTimer.current>40){ blinkState.current='open'; blinkTimer.current=0; nextBlinkAt.current=2000+Math.random()*4000; }
+      // Blink value: 0=open, 1=closed
+      const blinkVal = blinkState.current==='closing'?Math.min(1,blinkTimer.current/40):blinkState.current==='closed'?1:blinkState.current==='opening'?Math.max(0,1-blinkTimer.current/40):0;
+      aRef.current.blink = lerp(aRef.current.blink, blinkVal, 0.6);
 
-      // Breathing (base idle) — subtle, slow, barely perceptible
-      const breatheSpeed = st.isEgg ? 1.0 : 0.45; // slow breathing
-      tg.by = Math.sin(t * breatheSpeed * Math.PI * 2) * 1.2; // just 1.2px gentle float
-      tg.sx = 1 + Math.cos(t * breatheSpeed * Math.PI * 2) * 0.006; // 0.6% width change — barely visible
-      tg.sy = 1 - Math.sin(t * breatheSpeed * Math.PI * 2) * 0.008; // 0.8% height change — subtle
+      // === EAR TWITCH ===
+      earTwitchTimer.current += dt*1000;
+      if(earTwitchTarget.current==='none' && earTwitchTimer.current>=nextEarTwitchAt.current){
+        earTwitchTarget.current = Math.random()<0.5?'left':'right'; earTwitchTimer.current=0;
+      }
+      if(earTwitchTarget.current!=='none' && earTwitchTimer.current>180){ earTwitchTarget.current='none'; nextEarTwitchAt.current=3000+Math.random()*7000; earTwitchTimer.current=0; }
+      const twitchPhase = earTwitchTarget.current!=='none'?Math.sin(earTwitchTimer.current/180*Math.PI)*0.15:0;
+      aRef.current.earL = lerp(aRef.current.earL, earTwitchTarget.current==='left'?twitchPhase:0, 0.3);
+      aRef.current.earR = lerp(aRef.current.earR, earTwitchTarget.current==='right'?twitchPhase:0, 0.3);
 
-      // Animation-specific overrides (reduced amplitudes)
-      if (anim === 'excited' || anim === 'playing') {
-        const bounce = Math.abs(Math.sin(t * 2.8)) * 6; // smaller bounce
-        tg.by = -bounce;
-        tg.sy = 1 + bounce / 60; // much less squash
-        tg.sx = 1 - bounce / 80; // much less stretch
-      }
-      if (anim === 'happy') {
-        tg.wiggle = Math.sin(t * 3) * 1.5;
-        tg.by = Math.sin(t * 3) * 0.8;
-      }
-      if (anim === 'sleepy' || anim === 'daydreaming') {
-        tg.sway = Math.sin(t * 1.0) * 1.8; // slow gentle sway
-      }
-      if (anim === 'craving') {
-        tg.wiggle = Math.sin(t * 5) * 1.0;
-        tg.by = Math.sin(t * 6) * 0.8;
-      }
-      if (anim === 'evolving') {
-        tg.sx = 1 + Math.sin(t * 2) * 0.03; // gentle pulse
-        tg.sy = 1 + Math.sin(t * 2) * 0.03;
-        tg.flash = 0.4 + Math.sin(t * 4) * 0.3;
-      }
+      // === ANTICIPATION (lean-in before actions) ===
+      const shouldAnticipate = anim!=='idle'&&anim!=='sleepy'&&anim!=='evolving'&&anim!=='daydreaming'&&anim!=='craving';
+      const anticTarget = shouldAnticipate&&elapsed<0.25?Math.sin(elapsed/0.25*Math.PI*0.5)*0.6:0;
+      aRef.current.antic = lerp(aRef.current.antic, anticTarget, 0.2);
 
-      // Blend into target — slower lerp for smoother motion
-      const cur = animRef.current;
-      cur.bx = lerp(cur.bx, tg.bx, 0.12);
-      cur.by = lerp(cur.by, tg.by, 0.12);
-      cur.sx = lerp(cur.sx, tg.sx, 0.10);
-      cur.sy = lerp(cur.sy, tg.sy, 0.10);
-      cur.wiggle = lerp(cur.wiggle, tg.wiggle, 0.10);
-      cur.sway = lerp(cur.sway, tg.sway, 0.08);
-      cur.flash = lerp(cur.flash, tg.flash, 0.08);
+      // === TARGET ANIMATION VALUES ===
+      const tg = { bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0 };
+      const bSpeed = si.isEgg?0.9:0.4;
+      tg.by = Math.sin(t*bSpeed*Math.PI*2)*1.0;
+      tg.sx = 1+Math.cos(t*bSpeed*Math.PI*2)*0.005;
+      tg.sy = 1-Math.sin(t*bSpeed*Math.PI*2)*0.006;
+      if(anim==='excited'||anim==='playing'){ const b=Math.abs(Math.sin(t*2.5))*5; tg.by=-b; tg.sy=1+b/70; tg.sx=1-b/90; }
+      if(anim==='happy'){ tg.by=Math.sin(t*2.8)*1.2; tg.wiggle=Math.sin(t*2.8)*1.2; }
+      if(anim==='sleepy'||anim==='daydreaming'){ tg.sway=Math.sin(t*0.9)*1.5; }
+      if(anim==='craving'){ tg.wiggle=Math.sin(t*5)*0.8; tg.by=Math.sin(t*6)*0.6; }
+      if(anim==='evolving'){ tg.sx=1+Math.sin(t*2)*0.03; tg.sy=1+Math.sin(t*2)*0.03; tg.flash=0.35+Math.sin(t*4)*0.25; }
+      // Eating: quick lean forward then settle
+      if(anim==='eating'){ tg.by=elapsed<0.3?-2-Math.sin(elapsed/0.3*Math.PI)*2:Math.sin(t*0.5)*0.5; }
+      // Learning: focused stillness
+      if(anim==='learning'){ tg.by=Math.sin(t*0.3)*0.4; tg.sx=0.995; tg.sy=1.005; }
+      // Follow-through bounce after action
+      const followThrough = !shouldAnticipate&&elapsed>0&&elapsed<0.5?Math.sin((elapsed-0.25)/0.25*Math.PI)*1.5*(1-elapsed/0.5):0;
+      if(followThrough>0&&anim==='idle'){ tg.by+=followThrough; }
 
-      setRender(Math.floor(frameRef.current * 20) % 10000);
-      rafRef.current = requestAnimationFrame(tick);
+      // Blend
+      const c=aRef.current;
+      c.bx=lerp(c.bx,tg.bx,0.10); c.by=lerp(c.by,tg.by,0.10);
+      c.sx=lerp(c.sx,tg.sx,0.08); c.sy=lerp(c.sy,tg.sy,0.08);
+      c.wiggle=lerp(c.wiggle,tg.wiggle,0.08); c.sway=lerp(c.sway,tg.sway,0.06);
+      c.flash=lerp(c.flash,tg.flash,0.06);
+
+      setRender(Math.floor(frameRef.current*25)%10000);
+      rafRef.current=requestAnimationFrame(tick);
     };
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [resolvedAnim, level]);
+    rafRef.current=requestAnimationFrame(tick);
+    return ()=>cancelAnimationFrame(rafRef.current);
+  },[resolvedAnim,level]);
 
   // Interaction spark
-  useEffect(() => {
-    if (interactionSpark > 0 && interactionSpark !== lastSpark.current) {
-      lastSpark.current = interactionSpark;
-      animRef.current.flash = 1;
-      if (flashTimeout.current) clearTimeout(flashTimeout.current);
-      flashTimeout.current = setTimeout(() => { animRef.current.flash = 0; }, 400);
-    }
-  }, [interactionSpark]);
+  useEffect(()=>{ if(interactionSpark>0&&interactionSpark!==lastSpark.current){ lastSpark.current=interactionSpark; aRef.current.flash=1; if(flashTimeout.current)clearTimeout(flashTimeout.current); flashTimeout.current=setTimeout(()=>{aRef.current.flash=0;},400); } },[interactionSpark]);
 
-  const { bx, by, sx, sy, wiggle, sway, flash } = animRef.current;
-  const evolveGlow = resolvedAnim === 'evolving' ? animRef.current.flash : 0;
-  const brightness = isNight ? 0.55 + flash * 0.45 : 1 + flash * 3;
-  const contrast = resolvedAnim === 'evolving' ? 1.3 + evolveGlow * 0.5 : flash > 0.1 ? 2 + flash * 3 : 1;
+  const { bx,by,sx,sy,wiggle,sway,flash,blink,earL,earR,antic } = aRef.current;
+  const brightness = isNight?0.55+flash*0.45:1+flash*2.5;
+  const contrast = resolvedAnim==='evolving'?1.3+flash*0.5:flash>0.05?2+flash*3:1;
 
-  /* ================================================================
-     Hatchling Color Palette
-     ================================================================ */
-  // Skin colors override stage defaults
-  const skinMap: Record<string, [string, string, string]> = {
-    none: [st.isSage?'#312e81':st.isCompanion?'#4338ca':st.isLearner?'#4f46e5':st.isToddler?'#6366f1':'#818cf8', st.isSage?'#4338ca':'#818cf8', st.isSage?'#1e1b4b':'#4f46e5'],
-    wizard: ['#7e22ce','#a855f7','#581c87'], ninja: ['#1e293b','#334155','#0f172a'],
-    astronaut: ['#e2e8f0','#f8fafc','#94a3b8'], aurora: ['#06b6d4','#67e8f9','#0891b2'],
-    inferno: ['#ef4444','#fca5a5','#991b1b'], ocean: ['#2563eb','#93c5fd','#1e3a5f'],
-    forest: ['#16a34a','#86efac','#14532d'],
+  // Skin colors
+  const sm: Record<string,[string,string,string]> = {
+    none:[si.isSage?'#312e81':'#6366f1','#818cf8','#4f46e5'],
+    wizard:['#7e22ce','#a855f7','#581c87'], ninja:['#1e293b','#334155','#0f172a'],
+    astronaut:['#e2e8f0','#f8fafc','#94a3b8'], aurora:['#06b6d4','#67e8f9','#0891b2'],
+    inferno:['#ef4444','#fca5a5','#991b1b'], ocean:['#2563eb','#93c5fd','#1e3a5f'],
+    forest:['#16a34a','#86efac','#14532d'],
   };
-  const [bodyMain, bodyLight, bodyDark] = skinMap[skin] || skinMap.none;
-  const crestColor = skin === 'none' ? (st.isSage ? '#06b6d4' : '#fbbf24') : bodyLight;
-  const crestLight = skin === 'none' ? (st.isSage ? '#22d3ee' : '#f59e0b') : bodyLight;
+  const [bodyMain,bodyLight,bodyDark]=sm[skin]||sm.none;
+
+  // Expressions
+  const isHappy = resolvedAnim==='happy'||resolvedAnim==='playing';
+  const isSad = resolvedAnim==='craving';
+  const isSleepy = resolvedAnim==='sleepy'||resolvedAnim==='daydreaming';
+
+  // Eyebrow positions (top of eyes)
+  const browY = isHappy?-1:isSad?1:isSleepy?-0.5:0;
+  const browAngle = isSad?'rotate(-8 24 30)':'';
+  const browAngleR = isSad?'rotate(8 40 30)':'';
 
   return (
     <div className="pixel-pet-wrapper" style={{
-      width: `${256 * levelScale}px`,
-      height: `${256 * levelScale}px`,
-      filter: `brightness(${brightness}) contrast(${contrast}) drop-shadow(0 12px 20px rgba(0,0,0,0.4))`,
-      transition: flash > 0.1 ? 'none' : 'filter 0.4s ease-out',
+      width:`${256*levelScale}px`, height:`${256*levelScale}px`,
+      filter:`brightness(${brightness}) contrast(${contrast}) drop-shadow(0 12px 20px rgba(0,0,0,0.4))`,
+      transition:flash>0.05?'none':'filter 0.4s ease-out',
     }}>
-      <div className="pixel-pet-shadow" style={{
-        transform: `scaleX(${1 - by * 0.04}) translateX(${-sway * 0.3}px)`,
-        opacity: (resolvedAnim === 'excited' || resolvedAnim === 'playing') ? 0.15 : 0.5 * (isNight ? 0.55 : 1),
-      }} />
+      {/* Floor shadow */}
+      <div className="pixel-pet-shadow" style={{transform:`scaleX(${1-by*0.04})translateX(${-sway*0.3}px)`,opacity:(resolvedAnim==='excited'||resolvedAnim==='playing')?0.12:0.45*(isNight?0.55:1)}}/>
+
+      {/* Mood particles */}
+      {isHappy && <EmotionParticles type="hearts" count={3} />}
+      {resolvedAnim==='excited' && <EmotionParticles type="sparkles" count={5} />}
+      {isSad && <EmotionParticles type="sweat" count={1} />}
+      {isSleepy && <EmotionParticles type="z" count={2} />}
+      {resolvedAnim==='evolving' && <EmotionParticles type="stars" count={6} />}
 
       <svg viewBox="0 0 64 64" className="pixel-pet-svg" shapeRendering="crispEdges">
-        {/* Sage cosmic aura */}
-        {st.hasAura && (
-          <g style={{ transformOrigin: '32px 32px', animation: 'aura-spin 12s linear infinite' }}>
-            <ellipse cx="32" cy="32" rx="28" ry="12" fill="none" stroke="#06b6d4" strokeWidth="1" strokeDasharray="5 5" opacity="0.7" />
-            <ellipse cx="32" cy="32" rx="12" ry="28" fill="none" stroke="#818cf8" strokeWidth="1" strokeDasharray="5 5" opacity="0.6" />
-          </g>
-        )}
+        {/* Cosmic aura */}
+        {si.hasAura&&(<g style={{transformOrigin:'32px 32px',animation:'aura-spin 14s linear infinite'}}>
+          <ellipse cx="32" cy="32" rx="28" ry="12" fill="none" stroke={skin==='aurora'?'#67e8f9':'#06b6d4'} strokeWidth="1" strokeDasharray="5 5" opacity="0.6"/>
+          <ellipse cx="32" cy="32" rx="12" ry="28" fill="none" stroke={skin==='aurora'?'#a78bfa':'#818cf8'} strokeWidth="1" strokeDasharray="5 5" opacity="0.5"/>
+        </g>)}
 
-        {/* Main sprite group — all transforms composed */}
-        <g style={{ transform: `translate(32px,56px) scale(${sx},${sy}) translate(-32px,-56px) translateY(${by}px) translateX(${wiggle - sway}px)` }}>
+        {/* Main sprite — anticipation lean + all transforms */}
+        <g style={{transform:`translate(32px,56px)scale(${sx},${sy})translate(-32px,-56px)translateY(${by-antic}px)translateX(${wiggle-sway}px)`}}>
           {/* === EGG === */}
-          {st.isEgg && (
-            <g>
-              <ellipse cx="32" cy="40" rx="14" ry="17" fill="#f8fafc" />
-              <ellipse cx="27" cy="33" rx="5" ry="7" fill="white" opacity="0.45" />
-              <rect x="25" y="31" width="3" height="2" fill="#e2e8f0" rx="0.5" />
-              <rect x="34" y="36" width="4" height="2" fill="#e2e8f0" rx="0.5" />
-              <rect x="27" y="45" width="5" height="2" fill="#e2e8f0" rx="0.5" />
-              <rect x="22" y="41" width="2" height="3" fill="#e2e8f0" rx="0.5" />
-            </g>
-          )}
+          {si.isEgg&&(<g>
+            <ellipse cx="32" cy="40" rx="14" ry="17" fill="#f8fafc"/>
+            <ellipse cx="27" cy="33" rx="5" ry="7" fill="white" opacity="0.4"/>
+            <rect x="25" y="31" width="3" height="2" fill="#e2e8f0" rx="0.5"/>
+            <rect x="34" y="36" width="4" height="2" fill="#e2e8f0" rx="0.5"/>
+            <rect x="27" y="45" width="5" height="2" fill="#e2e8f0" rx="0.5"/>
+          </g>)}
 
           {/* === POST-EGG === */}
-          {!st.isEgg && (
-            <>
-              {/* Ninja sword behind body */}
-              {skin === 'ninja' && (
-                <g>
-                  <rect x="10" y="12" width="4" height="26" transform="rotate(-30 12 25)" fill="#cbd5e1" />
-                  <rect x="8" y="34" width="8" height="4" transform="rotate(-30 12 25)" fill="#334155" />
+          {!si.isEgg&&(<>
+            {/* Ninja sword behind body */}
+            {skin==='ninja'&&(<g><rect x="10" y="10" width="4" height="28" transform="rotate(-30 12 24)" fill="#cbd5e1"/><rect x="8" y="34" width="8" height="4" transform="rotate(-30 12 24)" fill="#334155"/></g>)}
+
+            {/* Inferno flames behind */}
+            {skin==='inferno'&&(<g>
+              <rect x="26" y="14" width="4" height="8" fill="#fbbf24" rx="1" opacity="0.7"/>
+              <rect x="28" y="10" width="8" height="6" fill="#f59e0b" rx="1" opacity="0.6"/>
+              <rect x="34" y="16" width="4" height="5" fill="#fbbf24" rx="1" opacity="0.5"/>
+            </g>)}
+
+            {/* Crest/hair with delayed motion */}
+            {si.hasCrest&&(<g style={{transform:`translateY(${Math.sin(frameRef.current*1.4+1)*2}px)`}}>
+              <rect x="27" y="13" width="10" height="12" fill={skin==='inferno'?'#f59e0b':skin==='ocean'?'#3b82f6':skin==='forest'?'#22c55e':si.isSage?'#06b6d4':'#fbbf24'} rx="1"/>
+              <rect x="29" y="9" width="6" height="4" fill={skin==='inferno'?'#fbbf24':skin==='ocean'?'#60a5fa':skin==='forest'?'#4ade80':si.isSage?'#22d3ee':'#f59e0b'} rx="1"/>
+              <rect x="30" y="10" width="3" height="2" fill="#fef3c7"/>
+              {skin==='wizard'&&(<g style={{transform:'translateY(-6px)'}}><polygon points="32,0 14,22 50,22" fill="#7e22ce"/><rect x="6" y="22" width="52" height="4" rx="2" fill="#6b21a8"/><rect x="27" y="8" width="10" height="7" fill="#facc15" rx="1"/></g>)}
+              {skin==='aurora'&&(<g><rect x="25" y="7" width="4" height="4" fill="#67e8f9" opacity="0.6"/><rect x="31" y="5" width="3" height="3" fill="#a78bfa" opacity="0.5"/><rect x="35" y="7" width="4" height="4" fill="#67e8f9" opacity="0.4"/></g>)}
+            </g>)}
+
+            {/* Feet */}
+            {si.hasFeet&&(<g>
+              <rect x="19" y="49" width="10" height="5" fill={bodyDark} rx="1"/><rect x="35" y="49" width="10" height="5" fill={bodyDark} rx="1"/>
+              <rect x="20" y="48" width="8" height="2" fill={bodyLight}/><rect x="36" y="48" width="8" height="2" fill={bodyLight}/>
+            </g>)}
+
+            {/* MAIN BODY */}
+            <rect x="15" y="22" width="34" height="28" rx="7" fill={bodyMain}/>
+            <rect x="17" y="20" width="30" height="32" rx="7" fill={bodyMain}/>
+            <rect x="17" y="22" width="26" height="5" rx="2" fill={bodyLight} opacity="0.7"/>
+            <rect x="15" y="28" width="4" height="16" rx="1" fill={bodyDark} opacity="0.6"/>
+
+            {/* Ninja headband */}
+            {skin==='ninja'&&(<g><rect x="13" y="26" width="38" height="4" fill="#dc2626"/><rect x="6" y={26+Math.sin(frameRef.current*2)*1} width="7" height="2" fill="#b91c1c"/></g>)}
+
+            {/* Forest leaves on body */}
+            {skin==='forest'&&(<g opacity="0.7">
+              <rect x="38" y="24" width="5" height="5" fill="#22c55e" rx="1"/><rect x="40" y="22" width="3" height="4" fill="#4ade80" rx="0.5"/>
+              <rect x="22" y="44" width="4" height="4" fill="#16a34a" rx="1"/>
+            </g>)}
+
+            {/* Wisdom lines */}
+            {si.hasWisdom&&(<g opacity="0.35"><rect x="23" y="24" width="18" height="1" fill={bodyDark}/><rect x="25" y="26" width="14" height="1" fill={bodyDark}/><rect x="24" y="28" width="16" height="1" fill={bodyDark}/></g>)}
+
+            {/* Astronaut chest */}
+            {skin==='astronaut'&&(<g><rect x="23" y="40" width="18" height="11" rx="2" fill="#f1f5f9" opacity="0.9"/><rect x="25" y="42" width="3" height="3" fill="#ef4444"/><rect x="30" y="42" width="8" height="3" fill="#3b82f6"/></g>)}
+
+            {/* Ocean ripples */}
+            {skin==='ocean'&&(<g opacity="0.4"><rect x="18" y="40" width="28" height="1" fill="#93c5fd"/><rect x="20" y="42" width="24" height="1" fill="#60a5fa"/></g>)}
+
+            {/* ====== FACE GROUP ====== */}
+            <g style={{transform:`translateY(${isSad?1:0}px)`}}>
+              {/* EYEBROWS — the key to expression */}
+              {!si.isEgg&&(<>
+                <g transform={browAngle}>
+                  <rect x="20" y={30+browY} width="8" height="2" fill={bodyDark} rx="0.5"/>
+                  {isSad&&<rect x="20" y={31+browY} width="8" height="1" fill={bodyDark} opacity="0.5"/>}
                 </g>
-              )}
-
-              {/* Crest / hair with secondary motion delay */}
-              {st.hasCrest && (
-                <g style={{ transform: `translateY(${Math.sin(frameRef.current * 1.7 + 1) * 2.5}px)` }}>
-                  <rect x="27" y="13" width="10" height="12" fill={crestColor} rx="1" />
-                  <rect x="29" y="9" width="6" height="4" fill={crestLight} rx="1" />
-                  <rect x="30" y="10" width="3" height="2" fill="#fef3c7" />
-                  {skin === 'wizard' && (
-                    <g style={{ transform: 'translateY(-6px)' }}>
-                      <polygon points="32,0 14,22 50,22" fill="#7e22ce" />
-                      <rect x="6" y="22" width="52" height="4" rx="2" fill="#6b21a8" />
-                      <rect x="27" y="8" width="10" height="7" fill="#facc15" rx="1" />
-                    </g>
-                  )}
+                <g transform={browAngleR}>
+                  <rect x="36" y={30+browY} width="8" height="2" fill={bodyDark} rx="0.5"/>
+                  {isSad&&<rect x="36" y={31+browY} width="8" height="1" fill={bodyDark} opacity="0.5"/>}
                 </g>
-              )}
+              </>)}
 
-              {/* Feet */}
-              {st.hasFeet && (
-                <g>
-                  <rect x="19" y="49" width="10" height="5" fill={bodyDark} rx="1" />
-                  <rect x="35" y="49" width="10" height="5" fill={bodyDark} rx="1" />
-                  <rect x="20" y="48" width="8" height="2" fill={bodyLight} />
-                  <rect x="36" y="48" width="8" height="2" fill={bodyLight} />
-                </g>
-              )}
+              {/* EYES with blink */}
+              {isSleepy?(<>
+                <rect x="21" y="34" width="8" height="2" fill="#1e1b4b" rx="0.5"/><rect x="35" y="34" width="8" height="2" fill="#1e1b4b" rx="0.5"/>
+                {renderTick%20<10&&resolvedAnim==='sleepy'&&<text x="45" y="22" fontSize="8" fill="#818cf8" fontFamily="monospace" fontWeight="bold">z</text>}
+                {renderTick%20>=10&&resolvedAnim==='sleepy'&&<text x="50" y="16" fontSize="10" fill="#818cf8" fontFamily="monospace" fontWeight="bold">Z</text>}
+              </>):(<>
+                <rect x="20" y="31" width="10" height={8*(1-blink*0.95)} fill="white" rx="1"/>
+                <rect x="34" y="31" width="10" height={8*(1-blink*0.95)} fill="white" rx="1"/>
+                {/* Pupils */}
+                {blink<0.7&&(<>
+                  <rect x={23+antic*2} y="33" width="5" height={5*(1-blink)} fill="#1e1b4b"/><rect x={37+antic*2} y="33" width="5" height={5*(1-blink)} fill="#1e1b4b"/>
+                  <rect x="24" y="33" width="2" height="2" fill="white"/><rect x="38" y="33" width="2" height="2" fill="white"/>
+                </>)}
+                {isHappy&&(<><rect x="20" y="35" width="10" height="3" fill={bodyMain}/><rect x="34" y="35" width="10" height="3" fill={bodyMain}/></>)}
+              </>)}
 
-              {/* MAIN BODY */}
-              <rect x="15" y="22" width="34" height="28" rx="7" fill={bodyMain} />
-              <rect x="17" y="20" width="30" height="32" rx="7" fill={bodyMain} />
-              {/* Body highlight (top shine) */}
-              <rect x="17" y="22" width="26" height="5" rx="2" fill={bodyLight} opacity="0.7" />
-              {/* Body shadow (left edge) */}
-              <rect x="15" y="28" width="4" height="16" rx="1" fill={bodyDark} opacity="0.6" />
+              {/* Blush */}
+              {!si.isEgg&&<g opacity={isHappy?0.85:resolvedAnim==='excited'?0.6:0.2}>
+                <rect x="17" y="38" width="5" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
+                <rect x="42" y="38" width="5" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
+              </g>}
 
-              {/* Ninja headband */}
-              {skin === 'ninja' && (
-                <g>
-                  <rect x="13" y="26" width="38" height="4" fill="#dc2626" />
-                  <rect x="6" y={26 + Math.sin(frameRef.current * 2) * 1} width="7" height="2" fill="#b91c1c" />
-                  <rect x="4" y={28 + Math.cos(frameRef.current * 2) * 1} width="4" height="2" fill="#b91c1c" />
-                </g>
-              )}
+              {/* MOUTH */}
+              {isHappy?<rect x="29" y="42" width="6" height="4" fill="#1e1b4b" rx="1"/>
+              :resolvedAnim==='excited'?<rect x="28" y="41" width="8" height="6" fill="#1e1b4b" rx="1"/>
+              :resolvedAnim==='eating'?<rect x="28" y="42" width="8" height="3" fill="#1e1b4b" rx="0.5"/>
+              :isSad?<rect x="28" y="44" width="8" height="2" fill="#1e1b4b" rx="0.5"/>
+              :isSleepy?<rect x="29" y="44" width="6" height="1.5" fill="#1e1b4b"/>
+              :resolvedAnim==='learning'?<rect x="31" y="43" width="3" height="1.5" fill="#1e1b4b"/>
+              :<rect x="31" y="43" width="2.5" height="1.5" fill="#1e1b4b"/>}
 
-              {/* Sage wisdom lines */}
-              {st.hasWisdom && (
-                <g opacity="0.35">
-                  <rect x="23" y="24" width="18" height="1" fill={bodyDark} />
-                  <rect x="25" y="26" width="14" height="1" fill={bodyDark} />
-                  <rect x="24" y="28" width="16" height="1" fill={bodyDark} />
-                </g>
-              )}
+              {/* Ear twitch indicators (ears rendered on head) */}
+              {si.hasCrest&&(<>
+                <rect x="14" y="28" width="4" height="8" fill={bodyLight} rx="1" style={{transform:`rotate(${-8-earL*8}deg)`,transformOrigin:'16px 28px'}}/>
+                <rect x="46" y="28" width="4" height="8" fill={bodyLight} rx="1" style={{transform:`rotate(${8+earR*8}deg)`,transformOrigin:'48px 28px'}}/>
+              </>)}
+            </g>
 
-              {/* Astronaut chest */}
-              {skin === 'astronaut' && (
-                <g>
-                  <rect x="23" y="40" width="18" height="11" rx="2" fill="#f1f5f9" opacity="0.9" />
-                  <rect x="25" y="42" width="3" height="3" fill="#ef4444" />
-                  <rect x="30" y="42" width="8" height="3" fill="#3b82f6" />
-                </g>
-              )}
+            {/* Hands */}
+            {si.hasHands&&(<g>
+              <rect x="8" y={34+(resolvedAnim==='excited'||resolvedAnim==='playing'?-8:0)} width="8" height="8" rx="2" fill={si.isSage?'#6366f1':skin==='astronaut'?'#f1f5f9':bodyLight}/>
+              <rect x="48" y={34+(resolvedAnim==='excited'||resolvedAnim==='playing'?-8:0)} width="8" height="8" rx="2" fill={si.isSage?'#6366f1':skin==='astronaut'?'#f1f5f9':bodyLight}/>
+            </g>)}
 
-              {/* FACE GROUP */}
-              <g style={{ transform: `translateY(${resolvedAnim === 'craving' ? 0.5 : 0}px)` }}>
-                {/* Eyes */}
-                {resolvedAnim === 'sleepy' || resolvedAnim === 'daydreaming' ? (
-                  <>
-                    <rect x="21" y="34" width="8" height="2" fill="#1e1b4b" rx="0.5" />
-                    <rect x="35" y="34" width="8" height="2" fill="#1e1b4b" rx="0.5" />
-                    {renderTick % 20 < 10 && resolvedAnim === 'sleepy' && (
-                      <text x="45" y="22" fontSize="8" fill="#818cf8" fontFamily="monospace" fontWeight="bold">z</text>
-                    )}
-                    {renderTick % 20 >= 10 && resolvedAnim === 'sleepy' && (
-                      <text x="50" y="16" fontSize="10" fill="#818cf8" fontFamily="monospace" fontWeight="bold">Z</text>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <rect x="20" y="31" width="10" height="8" fill="white" rx="1" />
-                    <rect x="34" y="31" width="10" height="8" fill="white" rx="1" />
-                    {/* Pupils */}
-                    <rect x="23" y="33" width="5" height="5" fill="#1e1b4b" />
-                    <rect x="37" y="33" width="5" height="5" fill="#1e1b4b" />
-                    {/* Catchlights */}
-                    <rect x="24" y="33" width="2" height="2" fill="white" />
-                    <rect x="38" y="33" width="2" height="2" fill="white" />
-                    {/* Happy squint overlay */}
-                    {(resolvedAnim === 'happy' || resolvedAnim === 'playing') && (
-                      <>
-                        <rect x="20" y="35" width="10" height="3" fill={bodyMain} />
-                        <rect x="34" y="35" width="10" height="3" fill={bodyMain} />
-                      </>
-                    )}
-                  </>
-                )}
-
-                {/* Blush */}
-                {!st.isEgg && (
-                  <g opacity={resolvedAnim === 'happy' || resolvedAnim === 'playing' ? 0.85 : resolvedAnim === 'excited' ? 0.6 : 0.25}>
-                    <rect x="17" y="38" width="5" height="2" fill="#f472b6" rx="0.5" />
-                    <rect x="42" y="38" width="5" height="2" fill="#f472b6" rx="0.5" />
-                  </g>
-                )}
-
-                {/* Mouth */}
-                {resolvedAnim === 'happy' || resolvedAnim === 'playing' ? (
-                  <rect x="29" y="42" width="6" height="4" fill="#1e1b4b" rx="1" />
-                ) : resolvedAnim === 'excited' ? (
-                  <rect x="28" y="41" width="8" height="6" fill="#1e1b4b" rx="1" />
-                ) : resolvedAnim === 'eating' ? (
-                  <rect x="28" y="42" width="8" height="3" fill="#1e1b4b" rx="0.5" />
-                ) : resolvedAnim === 'craving' ? (
-                  <rect x="27" y="44" width="10" height="3" fill="#1e1b4b" rx="0.5" />
-                ) : resolvedAnim === 'sleepy' || resolvedAnim === 'daydreaming' ? (
-                  <rect x="29" y="44" width="6" height="1.5" fill="#1e1b4b" />
-                ) : resolvedAnim === 'learning' ? (
-                  <rect x="31" y="43" width="3" height="1.5" fill="#1e1b4b" />
-                ) : (
-                  <rect x="31" y="43" width="2.5" height="1.5" fill="#1e1b4b" />
-                )}
-              </g>
-
-              {/* Hands (L12+) */}
-              {st.hasHands && (
-                <g>
-                  <rect x="8" y={34 + (resolvedAnim === 'excited' || resolvedAnim === 'playing' ? -9 : 0)} width="8" height="8" rx="2"
-                    fill={st.isSage ? '#6366f1' : skin === 'astronaut' ? '#f1f5f9' : bodyLight} />
-                  <rect x="48" y={34 + (resolvedAnim === 'excited' || resolvedAnim === 'playing' ? -9 : 0)} width="8" height="8" rx="2"
-                    fill={st.isSage ? '#6366f1' : skin === 'astronaut' ? '#f1f5f9' : bodyLight} />
-                </g>
-              )}
-
-              {/* Astronaut helmet */}
-              {skin === 'astronaut' && (
-                <g>
-                  <rect x="8" y="12" width="48" height="42" rx="20" fill="#7dd3fc" opacity="0.25" />
-                  <rect x="12" y="16" width="14" height="7" rx="3" fill="white" opacity="0.35" />
-                </g>
-              )}
-            </>
-          )}
+            {/* Astronaut helmet */}
+            {skin==='astronaut'&&(<g><rect x="8" y="12" width="48" height="42" rx="20" fill="#7dd3fc" opacity="0.25"/><rect x="12" y="16" width="14" height="7" rx="3" fill="white" opacity="0.35"/></g>)}
+          </>)}
         </g>
 
-        {/* === PROPS (rendered outside main transform group for independent positioning) === */}
-
-        {/* Food prop (eating) */}
-        {resolvedAnim === 'eating' && !st.isEgg && (
-          <g style={{ transform: `translate(22px, ${36 + by}px)` }}>
-            <rect x="0" y="0" width="11" height="11" fill="#f59e0b" rx="1" />
-            <rect x="2" y="2" width="7" height="7" fill="#b45309" rx="1" />
-            <rect x="4" y="4" width="3" height="3" fill="#fef3c7" />
-          </g>
-        )}
-
-        {/* Toy block (playing) */}
-        {resolvedAnim === 'playing' && st.hasHands && (
-          <g style={{ transform: `translate(44px, ${30 + by}px)` }}>
-            <rect x="0" y="0" width="11" height="11" fill="#fbbf24" rx="1" />
-            <rect x="1" y="1" width="4" height="4" fill="#f59e0b" />
-            <rect x="6" y="1" width="4" height="4" fill="#fef3c7" />
-            <rect x="1" y="6" width="4" height="4" fill="#fde68a" />
-            <rect x="6" y="6" width="4" height="4" fill="#f59e0b" />
-          </g>
-        )}
-
-        {/* Book (learning) */}
-        {resolvedAnim === 'learning' && st.hasHands && (
-          <g style={{ transform: `translate(12px, ${28 + by}px)` }}>
-            <rect x="0" y="0" width="14" height="11" fill="#c084fc" rx="1" />
-            <rect x="1" y="1" width="5.5" height="9" fill="#fef3c7" />
-            <rect x="7.5" y="1" width="5.5" height="9" fill="#fef3c7" />
-            <rect x="2" y="2" width="3.5" height="2" fill="#a78bfa" />
-            <rect x="8.5" y="3" width="3.5" height="2" fill="#a78bfa" />
-          </g>
-        )}
-
-        {/* Bubbles (cleaning) */}
-        {resolvedAnim === 'cleaning' && (
-          <g style={{ transform: `translate(26px, ${24 + by}px)` }}>
-            <circle cx="0" cy="0" r="6" fill="#bae6fd" opacity="0.55" />
-            <circle cx="11" cy="-3" r="5" fill="#bae6fd" opacity="0.45" />
-            <circle cx="5" cy="12" r="7" fill="#bae6fd" opacity="0.45" />
-            <circle cx="17" cy="9" r="4" fill="#bae6fd" opacity="0.35" />
-            <circle cx="-4" cy="8" r="3" fill="#bae6fd" opacity="0.3" />
-          </g>
-        )}
-
-        {/* Dream bubbles (daydreaming) */}
-        {resolvedAnim === 'daydreaming' && (
-          <g style={{ transform: `translate(44px, ${14 + by + sway}px)` }}>
-            <circle cx="0" cy="0" r="6" fill="#c084fc" opacity="0.45" />
-            <circle cx="9" cy="-7" r="5" fill="#a78bfa" opacity="0.35" />
-            <circle cx="16" cy="-14" r="4" fill="#818cf8" opacity="0.25" />
-            <circle cx="4" cy="-17" r="2.5" fill="#6366f1" opacity="0.2" />
-            <text x="5" y="-2" fontSize="7" fill="#a78bfa" fontFamily="monospace" fontWeight="bold">z</text>
-          </g>
-        )}
-
-        {/* Wand (excited wizard) */}
-        {resolvedAnim === 'excited' && st.hasHands && (
-          <g style={{ transform: `translate(42px, ${26 + by}px)` }}>
-            {skin === 'wizard' ? (
-              <>
-                <rect x="0" y="-18" width="2.5" height="20" fill="#854d0e" />
-                <rect x="-3" y="-22" width="8" height="8" fill="#facc15" rx="1" />
-                <rect x="-1" y="-20" width="4" height="4" fill="#fef3c7" />
-              </>
-            ) : (
-              <>
-                <rect x="2" y="0" width="5" height="14" fill="#cbd5e1" rx="1" />
-                <rect x="0" y="0" width="9" height="3.5" fill="#334155" rx="0.5" />
-                <rect x="0" y="10.5" width="9" height="3.5" fill="#334155" rx="0.5" />
-              </>
-            )}
-          </g>
-        )}
+        {/* ===== PROPS (outside transform group) ===== */}
+        {resolvedAnim==='eating'&&!si.isEgg&&(<g style={{transform:`translate(22px,${36+by}px)`}}>
+          <rect x="0" y="0" width="12" height="12" fill={skin==='inferno'?'#ef4444':'#f59e0b'} rx="1"/>
+          <rect x="2" y="2" width="8" height="8" fill={skin==='inferno'?'#dc2626':'#b45309'} rx="1"/>
+          <rect x="4" y="4" width="4" height="4" fill="#fef3c7"/>
+        </g>)}
+        {resolvedAnim==='playing'&&si.hasHands&&(<g style={{transform:`translate(44px,${30+by}px)`}}>
+          <rect x="0" y="0" width="12" height="12" fill={skin==='ocean'?'#3b82f6':skin==='forest'?'#22c55e':'#fbbf24'} rx="1"/>
+          <rect x="1" y="1" width="4.5" height="4.5" fill={skin==='ocean'?'#2563eb':skin==='forest'?'#16a34a':'#f59e0b'}/>
+          <rect x="6.5" y="1" width="4.5" height="4.5" fill="#fef3c7"/>
+          <rect x="1" y="6.5" width="4.5" height="4.5" fill="#fde68a"/>
+          <rect x="6.5" y="6.5" width="4.5" height="4.5" fill={skin==='ocean'?'#2563eb':'#f59e0b'}/>
+        </g>)}
+        {resolvedAnim==='learning'&&si.hasHands&&(<g style={{transform:`translate(12px,${28+by}px)`}}>
+          <rect x="0" y="0" width="15" height="12" fill={skin==='aurora'?'#06b6d4':'#c084fc'} rx="1"/>
+          <rect x="1.5" y="1.5" width="5.5" height="9" fill="#fef3c7"/><rect x="8" y="1.5" width="5.5" height="9" fill="#fef3c7"/>
+          <rect x="2.5" y="2.5" width="3.5" height="2" fill={skin==='aurora'?'#67e8f9':'#a78bfa'}/>
+          <rect x="9" y="3.5" width="3.5" height="2" fill={skin==='aurora'?'#67e8f9':'#a78bfa'}/>
+        </g>)}
+        {resolvedAnim==='cleaning'&&(<g style={{transform:`translate(26px,${24+by}px)`}}>
+          {[0,1,2,3,4].map(i=><circle key={i} cx={i*4+Math.sin(frameRef.current*3+i)*2} cy={i*3+Math.cos(frameRef.current*2+i)*2} r={6-i*0.8} fill="#bae6fd" opacity={0.55-i*0.1}/>)}
+        </g>)}
+        {resolvedAnim==='daydreaming'&&(<g style={{transform:`translate(44px,${14+by+sway}px)`}}>
+          <circle cx="0" cy="0" r="6" fill={skin==='aurora'?'#67e8f9':'#c084fc'} opacity="0.4"/>
+          <circle cx="9" cy="-7" r="5" fill={skin==='aurora'?'#a78bfa':'#a78bfa'} opacity="0.3"/>
+          <circle cx="16" cy="-14" r="4" fill={skin==='aurora'?'#c084fc':'#818cf8'} opacity="0.2"/>
+          <text x="5" y="-2" fontSize="7" fill={skin==='aurora'?'#67e8f9':'#a78bfa'} fontFamily="monospace" fontWeight="bold">z</text>
+        </g>)}
+        {resolvedAnim==='excited'&&si.hasHands&&(<g style={{transform:`translate(42px,${26+by}px)`}}>
+          {skin==='wizard'?(<><rect x="0" y="-18" width="2.5" height="20" fill="#854d0e"/><rect x="-3" y="-22" width="8" height="8" fill="#facc15" rx="1"/><rect x="-1" y="-20" width="4" height="4" fill="#fef3c7"/></>)
+          :(<><rect x="2" y="0" width="5" height="14" fill="#cbd5e1" rx="1"/><rect x="0" y="0" width="9" height="3.5" fill="#334155" rx="0.5"/><rect x="0" y="10.5" width="9" height="3.5" fill="#334155" rx="0.5"/></>)}
+        </g>)}
       </svg>
 
       <style>{`
-        .pixel-pet-wrapper {
-          position: relative; width: 256px; height: 256px;
-          display: flex; align-items: center; justify-content: center;
-          image-rendering: pixelated; image-rendering: crisp-edges;
-        }
-        .pixel-pet-svg {
-          width: 100%; height: 100%;
-          image-rendering: pixelated; image-rendering: crisp-edges;
-          z-index: 2;
-        }
-        .pixel-pet-shadow {
-          position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-          width: 90px; height: 12px; background: rgba(0,0,0,0.35); border-radius: 50%;
-          filter: blur(7px); z-index: 1;
-        }
-        @keyframes aura-spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        .pixel-pet-wrapper{position:relative;display:flex;align-items:center;justify-content:center;image-rendering:pixelated;image-rendering:crisp-edges;}
+        .pixel-pet-svg{width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;z-index:2;}
+        .pixel-pet-shadow{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:90px;height:12px;background:rgba(0,0,0,0.3);border-radius:50%;filter:blur(7px);z-index:1;}
+        @keyframes aura-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+        @keyframes float-up{0%{transform:translateY(0)scale(1);opacity:0.8}100%{transform:translateY(-40px)scale(0.5);opacity:0}}
+        @keyframes float-up-sway{0%{transform:translateY(0)translateX(0);opacity:0.6}50%{transform:translateX(10px)}100%{transform:translateY(-50px)translateX(-5px);opacity:0}}
+        @keyframes sweat-drop{0%{transform:translateY(0);opacity:0.5}100%{transform:translateY(20px);opacity:0}}
       `}</style>
     </div>
   );
 };
+
+// Emotion particle component
+const PARTICLE_COLORS: Record<string,string> = { hearts:'#f472b6', sparkles:'#fbbf24', sweat:'#60a5fa', z:'#818cf8', stars:'#facc15' };
+const PARTICLE_ICONS: Record<string,string> = { hearts:'♥', sparkles:'✦', sweat:'💧', z:'z', stars:'★' };
+
+const EmotionParticles = ({ type, count }: { type: string; count: number }) => (
+  <div style={{position:'absolute',inset:0,zIndex:5,pointerEvents:'none',overflow:'hidden'}}>
+    {Array.from({length:count}).map((_,i)=>(
+      <span key={i} style={{
+        position:'absolute',left:`${25+Math.random()*50}%`,top:`${40+Math.random()*30}%`,
+        color:PARTICLE_COLORS[type]||'#fff',fontSize:`${10+Math.random()*8}px`,
+        animation:`${type==='sweat'?'sweat-drop':'float-up'} ${1.2+Math.random()*1.5}s ease-out ${Math.random()*0.8}s infinite`,
+        opacity:0,
+      }}>{PARTICLE_ICONS[type]||'•'}</span>
+    ))}
+  </div>
+);

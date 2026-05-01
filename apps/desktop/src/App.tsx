@@ -56,6 +56,8 @@ export const App = () => {
     soundEnabled,
     currentAnimation,
     currentSkin,
+    behaviorEvents,
+    preferences,
     setPetName,
     setSkin,
     setModelName,
@@ -179,7 +181,7 @@ export const App = () => {
       if (stage !== 'alive' || isStreaming) return;
       const minsSinceInteraction = (Date.now() - lastInteractionRef.current) / 60000;
       // Try heartbeat first (contextual responses)
-      const heartbeat = generateHeartbeatPrompt(stats, dayPhase, minsSinceInteraction);
+      const heartbeat = generateHeartbeatPrompt(stats, dayPhase, minsSinceInteraction, preferences, behaviorEvents);
       const prompt = heartbeat || chooseAutonomousPrompt(stats, dayPhase);
       if (prompt) setBubbleText(capWords(prompt, level) || prompt);
     }, 15000); // Check every 15s

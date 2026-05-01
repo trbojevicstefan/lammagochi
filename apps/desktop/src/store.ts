@@ -7,6 +7,7 @@ import { soundEffects } from './audio/soundEffects';
 import { showToast } from './ui/Toast';
 import { getNewlyUnlocked } from './game/stageAbilities';
 import { applyItemEffects, type GameItem } from './game/items';
+import { recordEvent, updatePreferences, createEmptyPreferences, generatePetThought, type BehaviorEvent, type PetPreferences } from './game/behaviorMemory';
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
@@ -83,6 +84,8 @@ interface AppState {
   prevLevel: number;
   lastCheckIn: string;
   currentSkin: string;
+  behaviorEvents: BehaviorEvent[];
+  preferences: PetPreferences;
   // Actions
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
@@ -162,6 +165,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   prevLevel: 1,
   lastCheckIn: '',
   currentSkin: 'none',
+  behaviorEvents: [],
+  preferences: createEmptyPreferences(),
 
   setPetName: (name) => {
     soundEffects.chirp();
@@ -396,6 +401,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       actionCounts: counts,
       prevLevel: state.level,
       lastCheckIn: today,
+      behaviorEvents: recordEvent(state.behaviorEvents, action === 'feed' ? 'fed' : action === 'play' ? 'played' : action === 'clean' ? 'cleaned' : action === 'teach' ? 'taught' : action === 'task' ? 'tasked' : action === 'daydream' ? 'dreamed' : 'played', action, 'happy'),
+      preferences: updatePreferences(state.preferences, action === 'feed' ? 'fed' : action === 'play' ? 'played' : action === 'clean' ? 'cleaned' : action === 'teach' ? 'taught' : 'played'),
       ...(justLeveled ? { currentAnimation: 'evolving' as PetAnimationName } : {}),
     });
 
@@ -572,6 +579,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         actionCounts: (parsed.actionCounts as ActionCounts) ?? { ...defaultCounts },
         lastCheckIn: typeof parsed.lastCheckIn === 'string' ? parsed.lastCheckIn : '',
         currentSkin: typeof parsed.currentSkin === 'string' ? parsed.currentSkin : 'none',
+        behaviorEvents: Array.isArray(parsed.behaviorEvents) ? (parsed.behaviorEvents as BehaviorEvent[]) : [],
+        preferences: (parsed.preferences as PetPreferences) ?? createEmptyPreferences(),
       });
     } catch {
       // ignore invalid local state
@@ -600,6 +609,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       actionCounts: state.actionCounts,
       lastCheckIn: state.lastCheckIn,
       currentSkin: state.currentSkin,
+      behaviorEvents: state.behaviorEvents.slice(0, 20),
+      preferences: state.preferences,
     };
     localStorage.setItem('lamagotchi.v2', JSON.stringify(snapshot));
   },
