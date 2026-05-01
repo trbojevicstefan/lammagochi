@@ -4,6 +4,8 @@ import { applySimulationTick, resolveDayPhase, type DayPhase } from './game/simu
 import { getEvolutionStage, type EvolutionStage } from './game/evolution';
 import { createAchievements, checkAchievements, type Achievement, type AchievementId } from './game/achievements';
 import { soundEffects } from './audio/soundEffects';
+import { showToast } from './ui/Toast';
+import { getNewlyUnlocked } from './game/stageAbilities';
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
@@ -78,6 +80,7 @@ interface AppState {
   actionCounts: ActionCounts;
   currentAnimation: PetAnimationName | null;
   prevLevel: number;
+  lastCheckIn: string; // ISO date string
   // Actions
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
@@ -153,6 +156,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   actionCounts: { ...defaultCounts },
   currentAnimation: null,
   prevLevel: 1,
+  lastCheckIn: '',
 
   setPetName: (name) => {
     soundEffects.chirp();
@@ -212,6 +216,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const state = get();
     if (state.stage !== 'alive') return;
 
+    // Daily check-in bonus
+    const today = new Date().toISOString().slice(0, 10);
+    const isFirstToday = state.lastCheckIn !== today;
+
     // Trigger action animation
     const anim = actionToAnim[action];
     set({ currentAnimation: anim });
@@ -224,6 +232,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const stats = { ...state.stats };
     let xpGain = 4;
     const counts = { ...state.actionCounts };
+
+    // Daily check-in XP bonus
+    if (isFirstToday) {
+      xpGain += 10;
+      showToast('info', '📅 Daily Check-in!', '+10 bonus XP', 3000);
+    }
 
     if (action === 'feed') {
       stats.hunger = clampStat(stats.hunger + 14);
@@ -357,8 +371,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Sound
     if (state.soundEnabled) soundEffects.action(action);
 
+    // Toast: XP gain
+    showToast('xp', `+${xpGain} XP`, action.charAt(0).toUpperCase() + action.slice(1), 2500);
+
     // Level-up detection
     const justLeveled = progression.level > state.level;
+    const stageChanged = newEvoStage !== state.evolutionStage;
 
     set({
       stats,
@@ -370,7 +388,32 @@ export const useAppStore = create<AppState>((set, get) => ({
       achievements: achResult.achievements,
       actionCounts: counts,
       prevLevel: state.level,
+      lastCheckIn: today,
       ...(justLeveled ? { currentAnimation: 'evolving' as PetAnimationName } : {}),
+    });
+
+    // Toast: level-up
+    if (justLeveled) {
+      showToast('level', `Level ${progression.level}!`, `+${xpGain} XP earned`, 3500);
+
+      // Stage ability unlocks
+      const unlocked = getNewlyUnlocked(state.level, progression.level);
+      unlocked.forEach((ab) => {
+        setTimeout(() => {
+          showToast('info', `${ab.icon} ${ab.title} Unlocked!`, ab.description, 4000);
+        }, 1000); // slight delay so it doesn't stack with level-up toast
+      });
+    }
+
+    // Toast: evolution stage change
+    if (stageChanged) {
+      const stageNames: Record<string, string> = { baby: 'Hatchling', child: 'Sprout', teen: 'Wanderer', adult: 'Sage' };
+      showToast('evolve', `${stageNames[newEvoStage]}!`, `Evolved to ${newEvoStage} stage`, 4000);
+    }
+
+    // Toast: achievement unlock
+    achResult.newlyUnlocked.forEach((ach) => {
+      showToast('achievement', `${ach.icon} ${ach.title}`, ach.description, 4000);
     });
 
     // Auto-clear evolving animation after 3s
@@ -457,6 +500,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         achievements: Array.isArray(parsed.achievements) ? (parsed.achievements as Achievement[]) : createAchievements(),
         soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
         actionCounts: (parsed.actionCounts as ActionCounts) ?? { ...defaultCounts },
+        lastCheckIn: typeof parsed.lastCheckIn === 'string' ? parsed.lastCheckIn : '',
       });
     } catch {
       // ignore invalid local state
@@ -483,6 +527,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       achievements: state.achievements,
       soundEnabled: state.soundEnabled,
       actionCounts: state.actionCounts,
+      lastCheckIn: state.lastCheckIn,
     };
     localStorage.setItem('lamagotchi.v2', JSON.stringify(snapshot));
   },

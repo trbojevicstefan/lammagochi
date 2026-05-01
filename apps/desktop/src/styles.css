@@ -1321,6 +1321,36 @@ button:disabled {
 .toast--level { border-color: #c084fc; background: rgba(192,132,252,0.1); }
 .toast--achievement { border-color: #f59e0b; background: rgba(245,158,11,0.1); }
 .toast--evolve { border-color: #22d3ee; background: rgba(34,211,238,0.1); }
+.toast--info { border-color: #818cf8; background: rgba(129,140,248,0.08); }
+.toast--warning { border-color: #f59e0b; background: rgba(245,158,11,0.08); }
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.toast__icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.toast__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toast__title {
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.toast__subtitle {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(30px); }

@@ -7,7 +7,8 @@ import { useAppStore, type ChatMessage } from './store';
 import { buildLamagotchiSystemPrompt } from './game/promptBuilder';
 import { chooseAutonomousPrompt } from './game/simulationTick';
 import { getEvolutionStage, getEvolutionName } from './game/evolution';
-import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel } from './ui';
+import { getUpcoming } from './game/stageAbilities';
+import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer } from './ui';
 import { soundEffects } from './audio/soundEffects';
 
 const adapter = new OllamaHttpAdapter();
@@ -276,6 +277,7 @@ export const App = () => {
 
   return (
     <main className="app-shell">
+      <ToastContainer />
       {/* Onboarding overlay */}
       {(stage === 'onboarding' || stage === 'named_egg') && (
         <OnboardingScreen
@@ -452,6 +454,25 @@ export const App = () => {
                       title={`${ach.title}: ${ach.description} (${ach.progress}/${ach.target})`}
                     >
                       {ach.icon}
+                    </div>
+                  ))}
+                </div>
+
+                <hr className="sep" />
+
+                {/* Upcoming Abilities */}
+                <h2>Upcoming</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {getUpcoming(level, 3).map((ab) => (
+                    <div key={ab.level} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '4px 8px', borderRadius: 'var(--radius-sm)',
+                      background: 'rgba(99,102,241,0.06)', border: '1px solid var(--border-subtle)',
+                      fontSize: '0.68rem',
+                    }}>
+                      <span>{ab.icon}</span>
+                      <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{ab.title}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Lv.{ab.level}</span>
                     </div>
                   ))}
                 </div>
