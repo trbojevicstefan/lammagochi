@@ -158,7 +158,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const progression = addXp(state.xp, state.level, xpGain);
     const response = capWords(moodWord(stats), progression.level);
 
-    const journalType = action === 'daydream' ? 'daydream' : action === 'task' ? 'task' : null;
+    const journalType: JournalEntry['type'] | null = action === 'daydream' ? 'daydream' : action === 'task' ? 'task' : null;
     const nextJournalEntries: JournalEntry[] = journalType
       ? [
           {
