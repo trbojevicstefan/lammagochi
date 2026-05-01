@@ -25,6 +25,8 @@ export const App = () => {
     bubbleText,
     isStreaming,
     memoryItems,
+    journalEntries,
+    taskDifficulty,
     userInput,
     setPetName,
     setModelName,
@@ -32,6 +34,7 @@ export const App = () => {
     setUserInput,
     setBubbleText,
     setStreaming,
+    setTaskDifficulty,
     clearUserInput,
     performAction,
     feedKnowledge,
@@ -182,6 +185,19 @@ export const App = () => {
           <p>XP: {xp}</p>
           <p>Word cap: {getWordCapForLevel(level) >= 999 ? 'Sentence mode' : getWordCapForLevel(level)}</p>
           <p>Streaming: {isStreaming ? 'yes' : 'no'}</p>
+          <div className="model-row">
+            <label htmlFor="task-difficulty">Task difficulty</label>
+            <select
+              id="task-difficulty"
+              value={taskDifficulty}
+              onChange={(e) => setTaskDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
+              disabled={stage !== 'alive' || isStreaming}
+            >
+              <option value="easy">easy</option>
+              <option value="medium">medium</option>
+              <option value="hard">hard</option>
+            </select>
+          </div>
           <ul className="stats-list">
             {Object.entries(stats).map(([key, value]) => (
               <li key={key}>
@@ -224,6 +240,17 @@ export const App = () => {
                     Unapprove
                   </button>
                 </div>
+              </li>
+            ))}
+          </ul>
+          <hr className="sep" />
+          <h3>Skill Journal</h3>
+          <ul className="memory-list">
+            {journalEntries.length === 0 && <li className="memory-empty">No journal entries yet</li>}
+            {journalEntries.map((entry) => (
+              <li key={entry.id}>
+                <p>{entry.type}</p>
+                <small>{entry.content}</small>
               </li>
             ))}
           </ul>

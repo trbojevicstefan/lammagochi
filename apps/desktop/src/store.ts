@@ -4,6 +4,8 @@ import { DEFAULT_STATS, addXp, applyDecay, clampStat, getWordCapForLevel, type S
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
 type MemoryItem = { id: string; title: string; content: string; approved: boolean; createdAt: number };
+type TaskDifficulty = 'easy' | 'medium' | 'hard';
+type JournalEntry = { id: string; type: 'daydream' | 'task' | 'system'; content: string; createdAt: number };
 
 interface AppState {
   stage: LifecycleStage;
@@ -15,6 +17,8 @@ interface AppState {
   bubbleText: string;
   isStreaming: boolean;
   memoryItems: MemoryItem[];
+  journalEntries: JournalEntry[];
+  taskDifficulty: TaskDifficulty;
   userInput: string;
   lastTick: number;
   setPetName: (name: string) => void;
@@ -23,6 +27,7 @@ interface AppState {
   setUserInput: (text: string) => void;
   setBubbleText: (text: string) => void;
   setStreaming: (value: boolean) => void;
+  setTaskDifficulty: (value: TaskDifficulty) => void;
   performAction: (action: ActionType) => void;
   feedKnowledge: (text: string) => void;
   setMemoryApproval: (id: string, approved: boolean) => void;
@@ -61,6 +66,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   bubbleText: 'Hungry',
   isStreaming: false,
   memoryItems: [],
+  journalEntries: [],
+  taskDifficulty: 'easy',
   userInput: '',
   lastTick: Date.now(),
 
@@ -84,6 +91,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setUserInput: (text) => set({ userInput: text }),
   setBubbleText: (text) => set({ bubbleText: text }),
   setStreaming: (value) => set({ isStreaming: value }),
+  setTaskDifficulty: (value) => set({ taskDifficulty: value }),
   clearUserInput: () => set({ userInput: '' }),
 
   performAction: (action) => {
@@ -119,9 +127,26 @@ export const useAppStore = create<AppState>((set, get) => ({
       xpGain = 8;
     }
     if (action === 'task') {
+      if (stats.energy < 30 || stats.hunger < 25) {
+        const refusedEntry: JournalEntry = {
+          id: `jr_${Date.now()}`,
+          type: 'task',
+          content: 'Refused task due to low energy or hunger.',
+          createdAt: Date.now(),
+        };
+        set({
+          bubbleText: capWords(stats.energy < 30 ? 'Sleepy' : 'Hungry', state.level),
+          journalEntries: [refusedEntry, ...state.journalEntries].slice(0, 60),
+        });
+        return;
+      }
+
+      const diff = state.taskDifficulty;
+      const diffXp = diff === 'easy' ? 7 : diff === 'medium' ? 11 : 16;
+      const diffEnergyCost = diff === 'easy' ? 4 : diff === 'medium' ? 8 : 13;
       stats.knowledge = clampStat(stats.knowledge + 5);
-      stats.energy = clampStat(stats.energy - 6);
-      xpGain = 9;
+      stats.energy = clampStat(stats.energy - diffEnergyCost);
+      xpGain = diffXp;
     }
     if (action === 'daydream') {
       stats.curiosity = clampStat(stats.curiosity + 7);
@@ -133,11 +158,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     const progression = addXp(state.xp, state.level, xpGain);
     const response = capWords(moodWord(stats), progression.level);
 
+    const journalType = action === 'daydream' ? 'daydream' : action === 'task' ? 'task' : null;
+    const nextJournalEntries: JournalEntry[] = journalType
+      ? [
+          {
+            id: `jr_${Date.now()}`,
+            type: journalType,
+            content:
+              journalType === 'daydream'
+                ? 'Daydreamed about new skills and memories.'
+                : `Completed a ${state.taskDifficulty} task and learned from it.`,
+            createdAt: Date.now(),
+          },
+          ...state.journalEntries,
+        ].slice(0, 60)
+      : state.journalEntries;
+
     set({
       stats,
       xp: progression.xp,
       level: progression.level,
       bubbleText: response,
+      journalEntries: nextJournalEntries,
     });
   },
   feedKnowledge: (text) => {
@@ -193,6 +235,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         stats: parsed.stats ?? DEFAULT_STATS,
         bubbleText: parsed.bubbleText ?? 'Hungry',
         memoryItems: Array.isArray(parsed.memoryItems) ? (parsed.memoryItems as MemoryItem[]) : [],
+        journalEntries: Array.isArray(parsed.journalEntries) ? (parsed.journalEntries as JournalEntry[]) : [],
+        taskDifficulty: (parsed.taskDifficulty as TaskDifficulty) ?? 'easy',
         lastTick: typeof parsed.lastTick === 'number' ? parsed.lastTick : Date.now(),
       });
     } catch {
@@ -210,6 +254,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       stats: state.stats,
       bubbleText: state.bubbleText,
       memoryItems: state.memoryItems,
+      journalEntries: state.journalEntries,
+      taskDifficulty: state.taskDifficulty,
       lastTick: state.lastTick,
     };
     localStorage.setItem('lamagotchi.v1', JSON.stringify(snapshot));
