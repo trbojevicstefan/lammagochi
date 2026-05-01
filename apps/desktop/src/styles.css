@@ -416,6 +416,29 @@ code, .mono {
   font-weight: 600;
   color: var(--text-primary);
   font-family: 'JetBrains Mono', monospace;
+  transition: color 0.3s ease;
+}
+
+.stat-meter__value--up {
+  color: #4ade80 !important;
+  animation: value-pop-up 0.5s var(--ease-spring);
+}
+
+.stat-meter__value--down {
+  color: #f87171 !important;
+  animation: value-pop-down 0.5s var(--ease-spring);
+}
+
+@keyframes value-pop-up {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+@keyframes value-pop-down {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.85); }
+  100% { transform: scale(1); }
 }
 
 .stat-meter__track {
@@ -1391,6 +1414,50 @@ button:disabled {
 @keyframes toast-out {
   from { opacity: 1; transform: translateX(0); }
   to { opacity: 0; transform: translateX(30px); }
+}
+
+/* =============================================
+   MOOD SCREEN OVERLAYS
+   ============================================= */
+
+.viewport-mood-overlay {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  transition: opacity 1.5s ease; opacity: 0;
+}
+
+.viewport--sleepy .viewport-mood-overlay {
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(2,6,23,0.4) 100%);
+  opacity: 1;
+}
+
+.viewport--calm .viewport-mood-overlay {
+  background: radial-gradient(ellipse 60% 40% at 50% 35%, rgba(99,102,241,0.05) 0%, transparent 70%);
+  opacity: 1;
+}
+
+.viewport--excited .viewport-mood-overlay {
+  background: radial-gradient(ellipse 50% 50% at 50% 40%, rgba(250,204,21,0.06) 0%, transparent 70%);
+  opacity: 1;
+}
+
+/* =============================================
+   EMOJI THOUGHT BUBBLES
+   ============================================= */
+
+.emoji-bubble {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  animation: emoji-float 2.5s ease-out forwards;
+  font-size: 1.4rem;
+  opacity: 0;
+}
+
+@keyframes emoji-float {
+  0% { transform: translateY(0) scale(0.5); opacity: 0; }
+  15% { transform: translateY(-5px) scale(1.1); opacity: 0.9; }
+  30% { transform: translateY(-15px) scale(1); opacity: 0.8; }
+  100% { transform: translateY(-60px) scale(0.6); opacity: 0; }
 }
 
 /* =============================================

@@ -22,7 +22,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   const isNight = dayPhase === 'night';
 
   // Animation state (lerped)
-  const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0 });
+  const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0,tailWag:0,idleVariant:0,pupilSize:1 });
   const tgtRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0 });
   const [renderTick, setRender] = useState(0);
   const frameRef = useRef(0);
@@ -35,6 +35,10 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   const earTwitchTimer = useRef(0);
   const earTwitchTarget = useRef<'none'|'left'|'right'>('none');
   const nextEarTwitchAt = useRef(3000 + Math.random()*5000);
+  const idleVariantTimer = useRef(0);
+  const idleVariantType = useRef<'normal'|'stretch'|'look'|'wiggle'>('normal');
+  const nextIdleVariantAt = useRef(4000 + Math.random()*6000);
+  const tailWagIntensity = useRef(0);
   const animStart = useRef(0);
   const prevAnim = useRef<PetAnim>('idle');
   const flashTimeout = useRef<ReturnType<typeof setTimeout>>();
@@ -74,6 +78,34 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
       aRef.current.earL = lerp(aRef.current.earL, earTwitchTarget.current==='left'?twitchPhase:0, 0.3);
       aRef.current.earR = lerp(aRef.current.earR, earTwitchTarget.current==='right'?twitchPhase:0, 0.3);
 
+      // === IDLE VARIANTS (stretch, look-around, wiggle) ===
+      if(anim==='idle'){
+        idleVariantTimer.current += dt*1000;
+        if(idleVariantTimer.current >= nextIdleVariantAt.current){
+          const variants: Array<'normal'|'stretch'|'look'|'wiggle'> = ['normal','stretch','look','wiggle'];
+          idleVariantType.current = variants[Math.floor(Math.random()*variants.length)];
+          idleVariantTimer.current = 0;
+          nextIdleVariantAt.current = 5000 + Math.random()*10000;
+        }
+        // Apply variant effect
+        const variantPhase = idleVariantTimer.current < 1500 ? idleVariantTimer.current/1500 : 1 - Math.min(1,(idleVariantTimer.current-1500)/500);
+        const vi = idleVariantType.current === 'stretch' ? variantPhase*2 : idleVariantType.current === 'wiggle' ? variantPhase*1.5 : 0;
+        aRef.current.idleVariant = lerp(aRef.current.idleVariant, vi, 0.15);
+        // Look-around: subtle pupil dart
+        if(idleVariantType.current === 'look' && idleVariantTimer.current < 1500){
+          // Pupil dart effect applied via wiggle below
+        }
+      } else { aRef.current.idleVariant = lerp(aRef.current.idleVariant,0,0.1); }
+
+      // === TAIL WAG (intensity based on mood/happiness) ===
+      const tailTarget = anim==='happy'?0.5:anim==='excited'||anim==='playing'?0.8:anim==='idle'?0.15:0.05;
+      tailWagIntensity.current = lerp(tailWagIntensity.current, tailTarget, 0.05);
+      aRef.current.tailWag = Math.sin(t*4.5)*tailWagIntensity.current;
+
+      // === PUPIL DILATION (bigger when happy/excited, smaller when sad/sleepy) ===
+      const pupilTarget = anim==='happy'||anim==='excited'||anim==='playing'?1.3:anim==='sleepy'||anim==='craving'?0.8:1.0;
+      aRef.current.pupilSize = lerp(aRef.current.pupilSize, pupilTarget, 0.1);
+
       // === ANTICIPATION (lean-in before actions) ===
       const shouldAnticipate = anim!=='idle'&&anim!=='sleepy'&&anim!=='evolving'&&anim!=='daydreaming'&&anim!=='craving';
       const anticTarget = shouldAnticipate&&elapsed<0.25?Math.sin(elapsed/0.25*Math.PI*0.5)*0.6:0;
@@ -97,6 +129,10 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
       // Follow-through bounce after action
       const followThrough = !shouldAnticipate&&elapsed>0&&elapsed<0.5?Math.sin((elapsed-0.25)/0.25*Math.PI)*1.5*(1-elapsed/0.5):0;
       if(followThrough>0&&anim==='idle'){ tg.by+=followThrough; }
+      // Look-around idle variant: pupil dart effect
+      if(anim==='idle'&&idleVariantType.current==='look'&&idleVariantTimer.current<1500){
+        tg.wiggle += Math.sin(idleVariantTimer.current/200*Math.PI)*0.6;
+      }
 
       // Blend
       const c=aRef.current;
@@ -115,7 +151,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
   // Interaction spark
   useEffect(()=>{ if(interactionSpark>0&&interactionSpark!==lastSpark.current){ lastSpark.current=interactionSpark; aRef.current.flash=1; if(flashTimeout.current)clearTimeout(flashTimeout.current); flashTimeout.current=setTimeout(()=>{aRef.current.flash=0;},400); } },[interactionSpark]);
 
-  const { bx,by,sx,sy,wiggle,sway,flash,blink,earL,earR,antic } = aRef.current;
+  const { bx,by,sx,sy,wiggle,sway,flash,blink,earL,earR,antic,tailWag,idleVariant,pupilSize } = aRef.current;
   const brightness = isNight?0.55+flash*0.45:1+flash*2.5;
   const contrast = resolvedAnim==='evolving'?1.3+flash*0.5:flash>0.05?2+flash*3:1;
 
@@ -200,6 +236,16 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
               <rect x="20" y="48" width="8" height="2" fill={bodyLight}/><rect x="36" y="48" width="8" height="2" fill={bodyLight}/>
             </g>)}
 
+            {/* Tail (child+) */}
+            {si.hasCrest && (
+              <g style={{transform:`translate(2px,${38-idleVariant}px)rotate(${20+tailWag*25}deg)`,transformOrigin:'5px 40px'}}>
+                <rect x="5" y="38" width="6" height="12" fill={bodyDark} rx="2"/>
+                <rect x="4" y="44" width="4" height="6" fill={bodyLight} rx="1"/>
+                {/* Tail tip fluff */}
+                {si.hasWisdom && <rect x="3" y="48" width="6" height="4" fill={bodyMain} rx="2"/>}
+              </g>
+            )}
+
             {/* MAIN BODY */}
             <rect x="15" y="22" width="34" height="28" rx="7" fill={bodyMain}/>
             <rect x="17" y="20" width="30" height="32" rx="7" fill={bodyMain}/>
@@ -248,8 +294,8 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
                 <rect x="34" y="31" width="10" height={8*(1-blink*0.95)} fill="white" rx="1"/>
                 {/* Pupils */}
                 {blink<0.7&&(<>
-                  <rect x={23+antic*2} y="33" width="5" height={5*(1-blink)} fill="#1e1b4b"/><rect x={37+antic*2} y="33" width="5" height={5*(1-blink)} fill="#1e1b4b"/>
-                  <rect x="24" y="33" width="2" height="2" fill="white"/><rect x="38" y="33" width="2" height="2" fill="white"/>
+                  <rect x={23+antic*2} y={34-pupilSize*0.5} width={5*pupilSize} height={5*pupilSize*(1-blink)} fill="#1e1b4b" rx="0.5"/><rect x={37+antic*2} y={34-pupilSize*0.5} width={5*pupilSize} height={5*pupilSize*(1-blink)} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={24+(pupilSize-1)*2} y={33+(pupilSize>1?-0.5:0)} width={2} height={2} fill="white"/><rect x={38+(pupilSize-1)*2} y={33+(pupilSize>1?-0.5:0)} width={2} height={2} fill="white"/>
                 </>)}
                 {isHappy&&(<><rect x="20" y="35" width="10" height="3" fill={bodyMain}/><rect x="34" y="35" width="10" height="3" fill={bodyMain}/></>)}
               </>)}

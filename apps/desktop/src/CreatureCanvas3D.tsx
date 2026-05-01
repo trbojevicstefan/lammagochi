@@ -28,9 +28,12 @@ export const CreatureCanvas3D = ({
 }: Props) => {
   const mood = deriveCreatureMood(stats);
   const isEvolving = currentAnimation === 'evolving';
+  const moodClass = mood === 'sleepy' ? 'viewport--sleepy' : mood === 'calm' ? 'viewport--calm' : mood === 'curious' ? 'viewport--excited' : '';
 
   return (
-    <div className={`viewport-container ${isEvolving ? 'viewport--shaking' : ''}`}>
+    <div className={`viewport-container ${isEvolving ? 'viewport--shaking' : ''} ${moodClass}`}>
+      {/* Mood screen overlay */}
+      <div className="viewport-mood-overlay" />
       {/* 3D atmosphere layer (particles, ambient effects) */}
       <div className="viewport-3d-layer">
         <Canvas

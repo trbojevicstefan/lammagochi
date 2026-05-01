@@ -41,31 +41,49 @@ export const StatMeter = ({
   const color: MeterColor = forcedColor ?? getColorForValue(value);
   const colors = colorMap[color];
   const [displayPct, setDisplayPct] = useState(pct);
+  const [displayValue, setDisplayValue] = useState(value);
+  const [flashDir, setFlashDir] = useState<'up'|'down'|null>(null);
   const prevPct = useRef(pct);
+  const prevValue = useRef(value);
 
   useEffect(() => {
     const start = prevPct.current;
     const end = pct;
+    const valStart = prevValue.current;
+    const valEnd = value;
+    const delta = valEnd - valStart;
     prevPct.current = end;
+    prevValue.current = valEnd;
+
+    if (Math.abs(delta) >= 3) {
+      setFlashDir(delta > 0 ? 'up' : 'down');
+      setTimeout(() => setFlashDir(null), 600);
+    }
+
     const duration = 400;
     const startTime = Date.now();
 
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(1, elapsed / duration);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       setDisplayPct(start + (end - start) * eased);
+      setDisplayValue(Math.round(valStart + (valEnd - valStart) * eased));
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
-  }, [pct]);
+  }, [pct, value]);
 
   return (
     <div className={`stat-meter ${compact ? 'stat-meter--compact' : ''}`}>
       <div className="stat-meter__header">
         {icon && <span className="stat-meter__icon">{icon}</span>}
         <span className="stat-meter__label">{label}</span>
-        {showValue && <span className="stat-meter__value">{Math.round(value)}</span>}
+        {showValue && (
+          <span className={`stat-meter__value ${flashDir ? (flashDir === 'up' ? 'stat-meter__value--up' : 'stat-meter__value--down') : ''}`}>
+            {displayValue}
+          </span>
+        )}
       </div>
       <div className="stat-meter__track">
         <div
