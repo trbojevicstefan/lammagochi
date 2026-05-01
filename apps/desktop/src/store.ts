@@ -32,7 +32,18 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-// Action tracking counters for achievements
+export type PetAnimationName = 'idle' | 'happy' | 'sleepy' | 'eating' | 'cleaning' | 'playing' | 'learning' | 'daydreaming' | 'evolving' | 'craving';
+
+// Map action to pet animation
+const actionToAnim: Record<ActionType, PetAnimationName> = {
+  feed: 'eating',
+  play: 'playing',
+  sleep: 'sleepy',
+  clean: 'cleaning',
+  teach: 'learning',
+  task: 'learning',
+  daydream: 'daydreaming',
+};
 interface ActionCounts {
   chats: number;
   feeds: number;
@@ -65,6 +76,8 @@ interface AppState {
   soundEnabled: boolean;
   hatchProgress: number;
   actionCounts: ActionCounts;
+  currentAnimation: PetAnimationName | null;
+  prevLevel: number;
   // Actions
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
@@ -81,6 +94,7 @@ interface AppState {
   clearUserInput: () => void;
   addChatMessage: (msg: ChatMessage) => void;
   toggleSound: () => void;
+  clearAnimation: () => void;
   hydrateFromLocal: () => void;
   persistToLocal: () => void;
   applyDecayTick: () => void;
@@ -137,6 +151,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   soundEnabled: true,
   hatchProgress: 0,
   actionCounts: { ...defaultCounts },
+  currentAnimation: null,
+  prevLevel: 1,
 
   setPetName: (name) => {
     soundEffects.chirp();
@@ -190,9 +206,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleSound: () =>
     set((state) => ({ soundEnabled: !state.soundEnabled })),
 
+  clearAnimation: () => set({ currentAnimation: null }),
+
   performAction: (action) => {
     const state = get();
     if (state.stage !== 'alive') return;
+
+    // Trigger action animation
+    const anim = actionToAnim[action];
+    set({ currentAnimation: anim });
+    // Auto-clear action animation after 2.5s
+    setTimeout(() => {
+      const s = get();
+      if (s.currentAnimation === anim) set({ currentAnimation: null });
+    }, 2500);
+
     const stats = { ...state.stats };
     let xpGain = 4;
     const counts = { ...state.actionCounts };
@@ -329,6 +357,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Sound
     if (state.soundEnabled) soundEffects.action(action);
 
+    // Level-up detection
+    const justLeveled = progression.level > state.level;
+
     set({
       stats,
       xp: progression.xp,
@@ -338,7 +369,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       evolutionStage: newEvoStage,
       achievements: achResult.achievements,
       actionCounts: counts,
+      prevLevel: state.level,
+      ...(justLeveled ? { currentAnimation: 'evolving' as PetAnimationName } : {}),
     });
+
+    // Auto-clear evolving animation after 3s
+    if (justLeveled) {
+      setTimeout(() => {
+        const s = get();
+        if (s.currentAnimation === 'evolving') set({ currentAnimation: null });
+      }, 3000);
+    }
   },
 
   feedKnowledge: (text) => {

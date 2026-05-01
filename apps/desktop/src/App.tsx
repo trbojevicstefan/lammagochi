@@ -7,7 +7,7 @@ import { useAppStore, type ChatMessage } from './store';
 import { buildLamagotchiSystemPrompt } from './game/promptBuilder';
 import { chooseAutonomousPrompt } from './game/simulationTick';
 import { getEvolutionStage, getEvolutionName } from './game/evolution';
-import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen } from './ui';
+import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel } from './ui';
 import { soundEffects } from './audio/soundEffects';
 
 const adapter = new OllamaHttpAdapter();
@@ -29,6 +29,7 @@ export const App = () => {
   const [feedText, setFeedText] = useState('');
   const [sideTab, setSideTab] = useState<'care' | 'chat' | 'memory' | 'journal'>('care');
   const [interactionSpark, setInteractionSpark] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const sparkTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const {
@@ -50,6 +51,7 @@ export const App = () => {
     evolutionStage,
     achievements,
     soundEnabled,
+    currentAnimation,
     setPetName,
     setModelName,
     startHatch,
@@ -331,6 +333,13 @@ export const App = () => {
               {soundEnabled ? '🔊' : '🔇'}
             </button>
           )}
+          <button
+            onClick={() => setSettingsOpen(true)}
+            style={{ fontSize: '0.7rem', padding: '4px 8px' }}
+            title="Settings"
+          >
+            ⚙️
+          </button>
         </div>
       </header>
 
@@ -347,6 +356,7 @@ export const App = () => {
               isStreaming={isStreaming}
               hatchProgress={hatchProgress}
               interactionSpark={interactionSpark}
+              currentAnimation={currentAnimation}
             />
           </div>
           {stage === 'alive' && (
@@ -598,6 +608,21 @@ export const App = () => {
           </button>
         </div>
       </footer>
+
+      {/* Settings Modal */}
+      <SettingsPanel
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        petName={petName}
+        modelName={modelName}
+        soundEnabled={soundEnabled}
+        level={level}
+        xp={xp}
+        stage={getEvolutionName(evolutionStage)}
+        wordCap={getWordCapForLevel(level)}
+        onRename={(name) => { setPetName(name); setSettingsOpen(false); }}
+        onToggleSound={toggleSound}
+      />
     </main>
   );
 };

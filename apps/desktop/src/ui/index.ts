@@ -5,3 +5,4 @@ export { ChatLog } from './ChatLog';
 export type { ChatMessage } from './ChatLog';
 export { OnboardingScreen } from './OnboardingScreen';
 export { HatchScreen } from './HatchScreen';
+export { SettingsPanel } from './SettingsPanel';

@@ -1154,6 +1154,188 @@ button:disabled {
   }
 }
 
+/* =============================================
+   SETTINGS PANEL
+   ============================================= */
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.settings-card {
+  width: 90%;
+  max-width: 440px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: var(--pixel-border) solid #312e81;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6), 0 0 40px rgba(99,102,241,0.1);
+  animation: card-in 0.3s var(--ease-spring);
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 2px solid #1e1b4b;
+}
+
+.settings-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent-violet);
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.settings-close:hover {
+  color: var(--text-primary);
+}
+
+.settings-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.settings-section h3 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-field {
+  margin-bottom: 8px;
+}
+
+.settings-field label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.settings-field-row {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-field-row input {
+  flex: 1;
+}
+
+.settings-toggle {
+  margin-top: 4px;
+}
+
+.settings-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.settings-stats div {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(99,102,241,0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+}
+
+.settings-stats div span:last-child {
+  font-weight: 600;
+  color: var(--accent-violet);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.settings-model-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(99,102,241,0.1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.settings-note {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+/* =============================================
+   TOAST / POPUP
+   ============================================= */
+
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 10px 16px;
+  background: var(--bg-panel);
+  border: var(--pixel-border) solid #312e81;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: toast-in 0.3s var(--ease-out), toast-out 0.3s var(--ease-out) 2.5s forwards;
+  pointer-events: auto;
+  max-width: 280px;
+}
+
+.toast--xp { border-color: #4ade80; background: rgba(74,222,128,0.08); }
+.toast--level { border-color: #c084fc; background: rgba(192,132,252,0.1); }
+.toast--achievement { border-color: #f59e0b; background: rgba(245,158,11,0.1); }
+.toast--evolve { border-color: #22d3ee; background: rgba(34,211,238,0.1); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(30px); }
+}
+
+/* =============================================
+   REDUCED MOTION
+   ============================================= */
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

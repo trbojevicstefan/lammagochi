@@ -11,6 +11,7 @@ type Props = {
   isStreaming?: boolean;
   hatchProgress?: number;
   interactionSpark?: number;
+  currentAnimation?: string | null;
 };
 
 export const CreatureCanvas3D = ({
@@ -21,6 +22,7 @@ export const CreatureCanvas3D = ({
   isStreaming,
   hatchProgress = 0,
   interactionSpark = 0,
+  currentAnimation,
 }: Props) => {
   const mood = deriveCreatureMood(stats);
 
@@ -67,6 +69,7 @@ export const CreatureCanvas3D = ({
             dayPhase={dayPhase}
             isStreaming={isStreaming}
             interactionSpark={interactionSpark}
+            actionAnimation={currentAnimation}
           />
         </div>
       )}

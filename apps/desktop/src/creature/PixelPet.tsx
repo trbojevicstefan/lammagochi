@@ -8,6 +8,9 @@ type PetAnimation =
   | 'sleepy'
   | 'eating'
   | 'cleaning'
+  | 'playing'
+  | 'learning'
+  | 'daydreaming'
   | 'excited'
   | 'evolving'
   | 'craving';
@@ -21,6 +24,7 @@ type PixelPetProps = {
   isStreaming?: boolean;
   interactionSpark?: number;
   costume?: PetCostume;
+  actionAnimation?: string | null;
 };
 
 // Map mood to animation
@@ -54,9 +58,9 @@ export const PixelPet = ({
   isStreaming,
   interactionSpark = 0,
   costume = 'none',
+  actionAnimation,
 }: PixelPetProps) => {
   const [frame, setFrame] = useState(0);
-  const [animOverride, setAnimOverride] = useState<PetAnimation | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
   const rafRef = useRef<number>(0);
   const lastSpark = useRef(0);
@@ -81,22 +85,14 @@ export const PixelPet = ({
     if (interactionSpark > 0 && interactionSpark !== lastSpark.current) {
       lastSpark.current = interactionSpark;
       setIsFlashing(true);
-      setAnimOverride('happy');
       const t1 = setTimeout(() => setIsFlashing(false), 400);
-      const t2 = setTimeout(() => setAnimOverride(null), 1500);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
+      return () => { clearTimeout(t1); };
     }
   }, [interactionSpark]);
 
-  // Level up triggers evolve animation
-  useEffect(() => {
-    setAnimOverride('evolving');
-    const t = setTimeout(() => setAnimOverride(null), 3000);
-    return () => clearTimeout(t);
-  }, [level]);
-
   const si = stageInfo(level);
-  const animation = animOverride || moodToAnim[mood];
+  // Animation priority: action override > internal anim > mood-based
+  const animation: PetAnimation = (actionAnimation as PetAnimation) || moodToAnim[mood];
   const isNight = dayPhase === 'night';
   const nightDim = isNight ? 0.55 : 1;
 
@@ -107,15 +103,15 @@ export const PixelPet = ({
   const scaleX = 1 + Math.cos(breatheCycle) * 0.02;
   const scaleY = 1 - Math.sin(breatheCycle) * 0.03;
 
-  // Excited bounce
-  const bounceY = animation === 'excited' ? -Math.abs(Math.sin(frame * 1.5)) * 10 : 0;
-  const bounceSquash = animation === 'excited' ? 1 + bounceY / 30 : 1;
+  // Excited / playing bounce
+  const bounceY = (animation === 'excited' || animation === 'playing') ? -Math.abs(Math.sin(frame * 1.5)) * 10 : 0;
+  const bounceSquash = (animation === 'excited' || animation === 'playing') ? 1 + bounceY / 30 : 1;
 
   // Happy wiggle
   const wiggle = animation === 'happy' ? Math.sin(frame * 2) * 3 : 0;
 
-  // Sleepy sway
-  const sway = animation === 'sleepy' ? Math.sin(frame * 1.2) * 2 : 0;
+  // Sleepy / daydreaming sway
+  const sway = (animation === 'sleepy' || animation === 'daydreaming') ? Math.sin(frame * 1.2) * 2 : 0;
 
   // Evolving pulse
   const evolving = animation === 'evolving';
@@ -320,12 +316,18 @@ export const PixelPet = ({
                 )}
 
                 {/* Mouth */}
-                {animation === 'happy' || animation === 'excited' ? (
+                {animation === 'happy' || animation === 'playing' ? (
                   <rect x="30" y="42" width="4" height="4" fill="#1e1b4b" />
+                ) : animation === 'excited' ? (
+                  <rect x="29" y="41" width="6" height="5" fill="#1e1b4b" />
+                ) : animation === 'eating' ? (
+                  <rect x="29" y="42" width="6" height="3" fill="#1e1b4b" />
                 ) : animation === 'craving' ? (
                   <rect x="28" y="44" width="8" height="3" fill="#1e1b4b" />
-                ) : animation === 'sleepy' ? (
+                ) : animation === 'sleepy' || animation === 'daydreaming' ? (
                   <rect x="30" y="44" width="4" height="1" fill="#1e1b4b" />
+                ) : animation === 'learning' ? (
+                  <rect x="32" y="43" width="2" height="1" fill="#1e1b4b" />
                 ) : (
                   <rect x="31" y="43" width="2" height="1" fill="#1e1b4b" />
                 )}
@@ -399,6 +401,40 @@ export const PixelPet = ({
             <circle cx="10" cy="-2" r="4" fill="#bae6fd" opacity="0.5" />
             <circle cx="5" cy="10" r="6" fill="#bae6fd" opacity="0.5" />
             <circle cx="15" cy="8" r="3" fill="#bae6fd" opacity="0.4" />
+          </g>
+        )}
+
+        {/* === Prop: Toy Block (playing) === */}
+        {animation === 'playing' && si.hasHands && (
+          <g style={{ transform: `translate(42px, ${32 + yOffset + bounceY}px)` }}>
+            <rect x="0" y="0" width="10" height="10" fill="#fbbf24" />
+            <rect x="1" y="1" width="4" height="4" fill="#f59e0b" />
+            <rect x="5" y="1" width="4" height="4" fill="#fef3c7" />
+            <rect x="1" y="5" width="4" height="4" fill="#fde68a" />
+            <rect x="5" y="5" width="4" height="4" fill="#f59e0b" />
+          </g>
+        )}
+
+        {/* === Prop: Book (learning) === */}
+        {animation === 'learning' && si.hasHands && (
+          <g style={{ transform: `translate(14px, ${30 + yOffset}px)` }}>
+            <rect x="0" y="0" width="12" height="10" fill="#c084fc" />
+            <rect x="1" y="1" width="5" height="8" fill="#fef3c7" />
+            <rect x="7" y="1" width="4" height="8" fill="#fef3c7" />
+            <rect x="2" y="2" width="3" height="2" fill="#a78bfa" />
+            <rect x="8" y="3" width="2" height="2" fill="#a78bfa" />
+          </g>
+        )}
+
+        {/* === Prop: Dream bubbles (daydreaming) === */}
+        {animation === 'daydreaming' && (
+          <g style={{ transform: `translate(42px, ${16 + yOffset + sway}px)` }}>
+            <circle cx="0" cy="0" r="5" fill="#c084fc" opacity="0.5" />
+            <circle cx="8" cy="-6" r="4" fill="#a78bfa" opacity="0.4" />
+            <circle cx="14" cy="-12" r="3" fill="#818cf8" opacity="0.3" />
+            <circle cx="3" cy="-14" r="2" fill="#6366f1" opacity="0.25" />
+            {/* Small Z */}
+            <text x="4" y="-2" fontSize="6" fill="#a78bfa" fontFamily="monospace" fontWeight="bold">z</text>
           </g>
         )}
       </svg>
