@@ -14,6 +14,7 @@ export const App = () => {
   const [modelStatus, setModelStatus] = useState('Checking Ollama...');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [feedText, setFeedText] = useState('');
+  const [sideTab, setSideTab] = useState<'care' | 'memory' | 'journal'>('care');
 
   const {
     stage,
@@ -186,82 +187,106 @@ export const App = () => {
         </Panel>
 
         <Panel>
-          <h2>Status</h2>
-          <p>Model: {modelName}</p>
-          <p>Level: {level}</p>
-          <p>XP: {xp}</p>
-          <p>Word cap: {getWordCapForLevel(level) >= 999 ? 'Sentence mode' : getWordCapForLevel(level)}</p>
-          <p>Streaming: {isStreaming ? 'yes' : 'no'}</p>
-          <p>Day phase: {dayPhase}</p>
-          <div className="model-row">
-            <label htmlFor="task-difficulty">Task difficulty</label>
-            <select
-              id="task-difficulty"
-              value={taskDifficulty}
-              onChange={(e) => setTaskDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
-              disabled={stage !== 'alive' || isStreaming}
-            >
-              <option value="easy">easy</option>
-              <option value="medium">medium</option>
-              <option value="hard">hard</option>
-            </select>
+          <div className="tab-row">
+            <button className={sideTab === 'care' ? 'tab-active' : ''} onClick={() => setSideTab('care')}>
+              Care
+            </button>
+            <button className={sideTab === 'memory' ? 'tab-active' : ''} onClick={() => setSideTab('memory')}>
+              Memory
+            </button>
+            <button className={sideTab === 'journal' ? 'tab-active' : ''} onClick={() => setSideTab('journal')}>
+              Journal
+            </button>
           </div>
-          <ul className="stats-list">
-            {Object.entries(stats).map(([key, value]) => (
-              <li key={key}>
-                <span>{key}</span>
-                <span>{value}</span>
-              </li>
-            ))}
-          </ul>
-          <hr className="sep" />
-          <h3>Feed Knowledge</h3>
-          <textarea
-            value={feedText}
-            onChange={(e) => setFeedText(e.target.value)}
-            placeholder="Paste note or markdown snippet..."
-            rows={5}
-            disabled={stage !== 'alive' || isStreaming}
-          />
-          <button
-            onClick={() => {
-              feedKnowledge(feedText);
-              setFeedText('');
-            }}
-            disabled={stage !== 'alive' || !feedText.trim() || isStreaming}
-          >
-            Digest
-          </button>
-          <hr className="sep" />
-          <h3>Memory Queue</h3>
-          <ul className="memory-list">
-            {memoryItems.length === 0 && <li className="memory-empty">No memories yet</li>}
-            {memoryItems.map((item) => (
-              <li key={item.id}>
-                <p>{item.title}</p>
-                <small>{item.content}</small>
-                <div className="memory-actions">
-                  <button onClick={() => setMemoryApproval(item.id, true)} disabled={item.approved}>
-                    Approve
-                  </button>
-                  <button onClick={() => setMemoryApproval(item.id, false)} disabled={!item.approved}>
-                    Unapprove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <hr className="sep" />
-          <h3>Skill Journal</h3>
-          <ul className="memory-list">
-            {journalEntries.length === 0 && <li className="memory-empty">No journal entries yet</li>}
-            {journalEntries.map((entry) => (
-              <li key={entry.id}>
-                <p>{entry.type}</p>
-                <small>{entry.content}</small>
-              </li>
-            ))}
-          </ul>
+
+          {sideTab === 'care' && (
+            <div className="side-pane">
+              <h2>Status</h2>
+              <p>Model: {modelName}</p>
+              <p>Level: {level}</p>
+              <p>XP: {xp}</p>
+              <p>Word cap: {getWordCapForLevel(level) >= 999 ? 'Sentence mode' : getWordCapForLevel(level)}</p>
+              <p>Streaming: {isStreaming ? 'yes' : 'no'}</p>
+              <p>Day phase: {dayPhase}</p>
+              <div className="model-row">
+                <label htmlFor="task-difficulty">Task difficulty</label>
+                <select
+                  id="task-difficulty"
+                  value={taskDifficulty}
+                  onChange={(e) => setTaskDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
+                  disabled={stage !== 'alive' || isStreaming}
+                >
+                  <option value="easy">easy</option>
+                  <option value="medium">medium</option>
+                  <option value="hard">hard</option>
+                </select>
+              </div>
+              <ul className="stats-list">
+                {Object.entries(stats).map(([key, value]) => (
+                  <li key={key}>
+                    <span>{key}</span>
+                    <span>{value}</span>
+                  </li>
+                ))}
+              </ul>
+              <hr className="sep" />
+              <h3>Feed Knowledge</h3>
+              <textarea
+                value={feedText}
+                onChange={(e) => setFeedText(e.target.value)}
+                placeholder="Paste note or markdown snippet..."
+                rows={4}
+                disabled={stage !== 'alive' || isStreaming}
+              />
+              <button
+                onClick={() => {
+                  feedKnowledge(feedText);
+                  setFeedText('');
+                }}
+                disabled={stage !== 'alive' || !feedText.trim() || isStreaming}
+              >
+                Digest
+              </button>
+            </div>
+          )}
+
+          {sideTab === 'memory' && (
+            <div className="side-pane">
+              <h3>Memory Queue</h3>
+              <ul className="memory-list">
+                {memoryItems.length === 0 && <li className="memory-empty">No memories yet</li>}
+                {memoryItems.map((item) => (
+                  <li key={item.id}>
+                    <p>{item.title}</p>
+                    <small>{item.content}</small>
+                    <div className="memory-actions">
+                      <button onClick={() => setMemoryApproval(item.id, true)} disabled={item.approved}>
+                        Approve
+                      </button>
+                      <button onClick={() => setMemoryApproval(item.id, false)} disabled={!item.approved}>
+                        Unapprove
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {sideTab === 'journal' && (
+            <div className="side-pane">
+              <h3>Skill Journal</h3>
+              <ul className="memory-list">
+                {journalEntries.length === 0 && <li className="memory-empty">No journal entries yet</li>}
+                {journalEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <p>{entry.type}</p>
+                    <small>{entry.content}</small>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Panel>
       </section>
 

@@ -9,6 +9,8 @@
 
 body {
   margin: 0;
+  height: 100dvh;
+  overflow: hidden;
   background:
     radial-gradient(80% 120% at 10% 10%, #113446 0%, transparent 45%),
     radial-gradient(120% 120% at 90% 10%, #062b1e 0%, transparent 45%),
@@ -17,11 +19,12 @@ body {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100dvh;
   padding: 16px;
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 12px;
+  overflow: hidden;
 }
 
 .topbar {
@@ -36,13 +39,19 @@ body {
 }
 
 .layout {
+  min-height: 0;
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 12px;
 }
 
+.layout section {
+  min-height: 0;
+  overflow: hidden;
+}
+
 .canvas-wrap {
-  height: 420px;
+  height: min(52vh, 460px);
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid rgba(120, 255, 222, 0.28);
@@ -151,6 +160,9 @@ textarea:disabled {
   margin: 0;
   display: grid;
   gap: 8px;
+  overflow: auto;
+  max-height: 44vh;
+  padding-right: 4px;
 }
 
 .memory-list li {
@@ -173,12 +185,46 @@ textarea:disabled {
   opacity: 0.75;
 }
 
+.tab-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tab-active {
+  border-color: rgba(94, 234, 212, 0.9);
+  box-shadow: 0 0 0 1px rgba(94, 234, 212, 0.3) inset;
+}
+
+.side-pane {
+  overflow: auto;
+  max-height: calc(100dvh - 250px);
+  padding-right: 4px;
+}
+
 @media (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
   .layout {
     grid-template-columns: 1fr;
   }
 
   .canvas-wrap {
-    height: 320px;
+    height: 300px;
+  }
+
+  .side-pane,
+  .memory-list {
+    max-height: none;
+    overflow: visible;
   }
 }
