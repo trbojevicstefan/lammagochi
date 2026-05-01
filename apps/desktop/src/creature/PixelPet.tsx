@@ -240,18 +240,10 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
 
   // Expression values (lerped, game-quality)
   const { eyeH:exEyeH, eyeY:exEyeY, squint:exSquint, browY:exBrowY, browAngle:exBrowA, mouthW:exMouthW, mouthH:exMouthH, mouthY:exMouthY, mouthCurve:exMouthCurve, blushA:exBlushA, pupilH:exPupilH } = exprRef.current;
-  // Legacy booleans (keep for now, will be removed when SVG face is migrated to expression system)
   const isHappy = resolvedAnim==='happy'||resolvedAnim==='playing';
-  const isSad = resolvedAnim==='craving';
   const isSleepy = resolvedAnim==='sleepy'||resolvedAnim==='daydreaming';
   const isExcited = resolvedAnim==='excited';
-  const isEating = resolvedAnim==='eating';
-  const isCleaning = resolvedAnim==='cleaning';
-  const isLearning = resolvedAnim==='learning';
   const isEvolving = resolvedAnim==='evolving';
-  const browY = isHappy?-1:isSad?1:isSleepy?-0.5:isExcited?-1.5:0;
-  const browAngle = isSad?'rotate(-10 24 30)':isExcited?'rotate(-4 24 30)':'';
-  const browAngleR = isSad?'rotate(10 40 30)':isExcited?'rotate(4 40 30)':'';
 
   return (
     <div className="pixel-pet-wrapper" style={{
@@ -315,13 +307,12 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
               <rect x={32+si.bodyW/2-13} y={22+si.bodyH-5} width={8} height={2} fill={bodyLight}/>
             </g>)}
 
-            {/* Tail (child+) */}
+            {/* Tail (child+) — longer for sage */}
             {si.hasCrest && (
               <g style={{transform:`translate(2px,${38-idleVariant}px)rotate(${20+tailWag*25}deg)`,transformOrigin:'5px 40px'}}>
-                <rect x="5" y="38" width="6" height="12" fill={bodyDark} rx="2"/>
-                <rect x="4" y="44" width="4" height="6" fill={bodyLight} rx="1"/>
-                {/* Tail tip fluff */}
-                {si.hasWisdom && <rect x="3" y="48" width="6" height="4" fill={bodyMain} rx="2"/>}
+                <rect x="5" y="38" width={si.isSage?5:6} height={si.isSage?16:12} fill={bodyDark} rx="2"/>
+                <rect x="4" y={si.isSage?48:44} width="4" height={si.isSage?8:6} fill={bodyLight} rx="1"/>
+                {si.hasWisdom && <rect x="3" y={si.isSage?54:48} width={si.isSage?6:6} height={si.isSage?5:4} fill={bodyMain} rx="2"/>}
               </g>
             )}
 
@@ -355,8 +346,8 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
             {/* Ocean ripples */}
             {skin==='ocean'&&(<g opacity="0.4"><rect x="18" y="40" width="28" height="1" fill="#93c5fd"/><rect x="20" y="42" width="24" height="1" fill="#60a5fa"/></g>)}
 
-            {/* ====== FACE GROUP — Clean, emotion-rich ====== */}
-            <g style={{transform:`translateY(${isSad?0.5:0}px)`}}>
+            {/* ====== FACE — Expression-driven ====== */}
+            <g>
               {/* EYEBROWS — expression-driven */}
               {!si.isEgg&&(<>
                 <g transform={`rotate(${exBrowA} 24 30)`}>
