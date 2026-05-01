@@ -27,6 +27,7 @@ export const App = () => {
     memoryItems,
     journalEntries,
     taskDifficulty,
+    dayPhase,
     userInput,
     setPetName,
     setModelName,
@@ -42,6 +43,7 @@ export const App = () => {
     hydrateFromLocal,
     persistToLocal,
     applyDecayTick,
+    refreshDayPhase,
   } = useAppStore();
 
   const capWords = useCallback((text: string, capLevel: number) => {
@@ -61,7 +63,7 @@ export const App = () => {
 
   useEffect(() => {
     persistToLocal();
-  }, [stage, petName, modelName, level, xp, stats, bubbleText, persistToLocal]);
+  }, [stage, petName, modelName, level, xp, stats, bubbleText, taskDifficulty, dayPhase, memoryItems, journalEntries, persistToLocal]);
 
   useEffect(() => {
     const run = async () => {
@@ -91,6 +93,11 @@ export const App = () => {
     const id = setInterval(() => applyDecayTick(), 10000);
     return () => clearInterval(id);
   }, [applyDecayTick]);
+
+  useEffect(() => {
+    const id = setInterval(() => refreshDayPhase(), 30000);
+    return () => clearInterval(id);
+  }, [refreshDayPhase]);
 
   const systemPrompt = useMemo(
     () =>
@@ -185,6 +192,7 @@ export const App = () => {
           <p>XP: {xp}</p>
           <p>Word cap: {getWordCapForLevel(level) >= 999 ? 'Sentence mode' : getWordCapForLevel(level)}</p>
           <p>Streaming: {isStreaming ? 'yes' : 'no'}</p>
+          <p>Day phase: {dayPhase}</p>
           <div className="model-row">
             <label htmlFor="task-difficulty">Task difficulty</label>
             <select

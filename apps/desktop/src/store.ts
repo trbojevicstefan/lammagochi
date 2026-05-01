@@ -6,6 +6,7 @@ type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
 type MemoryItem = { id: string; title: string; content: string; approved: boolean; createdAt: number };
 type TaskDifficulty = 'easy' | 'medium' | 'hard';
 type JournalEntry = { id: string; type: 'daydream' | 'task' | 'system'; content: string; createdAt: number };
+type DayPhase = 'morning' | 'day' | 'evening' | 'night';
 
 interface AppState {
   stage: LifecycleStage;
@@ -19,6 +20,7 @@ interface AppState {
   memoryItems: MemoryItem[];
   journalEntries: JournalEntry[];
   taskDifficulty: TaskDifficulty;
+  dayPhase: DayPhase;
   userInput: string;
   lastTick: number;
   setPetName: (name: string) => void;
@@ -35,6 +37,7 @@ interface AppState {
   hydrateFromLocal: () => void;
   persistToLocal: () => void;
   applyDecayTick: () => void;
+  refreshDayPhase: () => void;
 }
 
 const moodWord = (stats: Stats): string => {
@@ -56,6 +59,14 @@ const capWords = (text: string, level: number): string => {
     .join(' ');
 };
 
+const resolveDayPhase = (date: Date): DayPhase => {
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 18) return 'day';
+  if (hour >= 18 && hour < 23) return 'evening';
+  return 'night';
+};
+
 export const useAppStore = create<AppState>((set, get) => ({
   stage: 'onboarding',
   petName: 'Noodle',
@@ -68,6 +79,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   memoryItems: [],
   journalEntries: [],
   taskDifficulty: 'easy',
+  dayPhase: resolveDayPhase(new Date()),
   userInput: '',
   lastTick: Date.now(),
 
@@ -237,6 +249,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         memoryItems: Array.isArray(parsed.memoryItems) ? (parsed.memoryItems as MemoryItem[]) : [],
         journalEntries: Array.isArray(parsed.journalEntries) ? (parsed.journalEntries as JournalEntry[]) : [],
         taskDifficulty: (parsed.taskDifficulty as TaskDifficulty) ?? 'easy',
+        dayPhase: (parsed.dayPhase as DayPhase) ?? resolveDayPhase(new Date()),
         lastTick: typeof parsed.lastTick === 'number' ? parsed.lastTick : Date.now(),
       });
     } catch {
@@ -256,6 +269,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       memoryItems: state.memoryItems,
       journalEntries: state.journalEntries,
       taskDifficulty: state.taskDifficulty,
+      dayPhase: state.dayPhase,
       lastTick: state.lastTick,
     };
     localStorage.setItem('lamagotchi.v1', JSON.stringify(snapshot));
@@ -263,10 +277,35 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   applyDecayTick: () => {
     const now = Date.now();
-    const { lastTick, stats, stage } = get();
+    const { lastTick, stats, stage, dayPhase } = get();
     if (stage !== 'alive') return;
     const minutes = (now - lastTick) / 60000;
     if (minutes < 1) return;
-    set({ stats: applyDecay(stats, minutes), lastTick: now });
+    const decayed = applyDecay(stats, minutes);
+    const adjusted = { ...decayed };
+    if (dayPhase === 'night') {
+      adjusted.energy = clampStat(adjusted.energy - 1);
+      adjusted.mood = clampStat(adjusted.mood - 1);
+    }
+    if (dayPhase === 'morning') {
+      adjusted.curiosity = clampStat(adjusted.curiosity + 1);
+    }
+    set({ stats: adjusted, lastTick: now });
+  },
+  refreshDayPhase: () => {
+    const state = get();
+    const next = resolveDayPhase(new Date());
+    if (next === state.dayPhase) return;
+    const entry: JournalEntry = {
+      id: `jr_${Date.now()}`,
+      type: 'system',
+      content: `Phase changed: ${state.dayPhase} -> ${next}.`,
+      createdAt: Date.now(),
+    };
+    set({
+      dayPhase: next,
+      journalEntries: [entry, ...state.journalEntries].slice(0, 60),
+      bubbleText: capWords(next === 'night' ? 'Sleepy' : next === 'morning' ? 'Awake' : 'Ready', state.level),
+    });
   },
 }));
