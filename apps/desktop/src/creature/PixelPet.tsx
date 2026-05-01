@@ -309,30 +309,22 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
                 <rect x="21" y="34" width="8" height="2" fill="#1e1b4b" rx="1"/>
                 <rect x="35" y="34" width="8" height="2" fill="#1e1b4b" rx="1"/>
               </>):(<>
-                {/* Eye whites */}
-                <rect x="20" y="31" width="10" height={8*(1-blink*0.95)} fill="white" rx="1"/>
-                <rect x="34" y="31" width="10" height={8*(1-blink*0.95)} fill="white" rx="1"/>
+                {/* Eye whites — shorter when happy (squinting) */}
+                {(()=>{const eh=isHappy?5:isSad?7:8;const ey=isHappy?33:isSad?32:31;return(<>
+                  <rect x="20" y={ey} width="10" height={eh*(1-blink*0.95)} fill="white" rx="1"/>
+                  <rect x="34" y={ey} width="10" height={eh*(1-blink*0.95)} fill="white" rx="1"/>
+                </>);})()}
                 {/* Pupils + catchlights */}
                 {blink<0.6&&(<>
-                  <rect x={23+antic} y="33" width={5*pupilSize} height={5*pupilSize*(1-blink)} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={37+antic} y="33" width={5*pupilSize} height={5*pupilSize*(1-blink)} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={25} y="33" width="2" height="2" fill="white"/>
-                  <rect x={39} y="33" width="2" height="2" fill="white"/>
+                  <rect x={23+antic} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={37+antic} y={(isHappy?34:isSad?33:33)} width={5*pupilSize} height={Math.max(1,5*pupilSize*(1-blink)*(isHappy?0.6:1))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={25} y={(isHappy?34:33)} width="2" height="2" fill="white"/>
+                  <rect x={39} y={(isHappy?34:33)} width="2" height="2" fill="white"/>
                 </>)}
-                {/* Happy squint */}
-                {isHappy&&(<>
-                  <rect x="20" y="35" width="10" height="3" fill={bodyMain}/>
-                  <rect x="34" y="35" width="10" height="3" fill={bodyMain}/>
-                </>)}
-                {/* Angry lowered eyelids */}
-                {isSad&&(<>
-                  <rect x="20" y="33" width="10" height="2" fill={bodyMain} opacity="0.6"/>
-                  <rect x="34" y="33" width="10" height="2" fill={bodyMain} opacity="0.6"/>
-                </>)}
-                {/* Excited wide eyes */}
+                {/* Subtle eye sparkle when excited */}
                 {isExcited&&(<>
-                  <rect x="19" y="30" width="12" height="10" fill="white" rx="1" opacity="0.3"/>
-                  <rect x="33" y="30" width="12" height="10" fill="white" rx="1" opacity="0.3"/>
+                  <rect x="27" y="30" width="2" height="2" fill="white" opacity="0.6"/>
+                  <rect x="41" y="30" width="2" height="2" fill="white" opacity="0.6"/>
                 </>)}
               </>)}
 
@@ -348,39 +340,28 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
                 <rect x="42" y="38" width="5" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
               </g>}
 
-              {/* MOUTH — distinct shapes per emotion */}
+              {/* MOUTH — clean pixel shapes */}
               {isHappy?<>
-                {/* Smile! */}
-                <rect x="29" y="42" width="6" height="4" fill="#1e1b4b" rx="1"/>
+                <rect x="29" y="42" width="6" height="3" fill="#1e1b4b" rx="1"/>
                 <rect x="28" y="41" width="1.5" height="2" fill="#1e1b4b" rx="0.5"/>
                 <rect x="34.5" y="41" width="1.5" height="2" fill="#1e1b4b" rx="0.5"/>
               </>:isExcited?<>
-                {/* Open mouth "wow!" */}
-                <rect x="29" y="41" width="6" height="6" fill="#1e1b4b" rx="1"/>
-                <rect x="30" y="43" width="4" height="2" fill="#ef4444" rx="0.5"/>
+                <rect x="28" y="41" width="8" height="6" fill="#1e1b4b" rx="1"/>
+                <rect x="29" y="43" width="6" height="3" fill="#ef4444" rx="0.5"/>
               </>:isSad?<>
-                {/* Frown */}
                 <rect x="29" y="44" width="6" height="1.5" fill="#1e1b4b" rx="0.5"/>
-                <rect x="28" y="44" width="1.5" height="1.5" fill="#1e1b4b" rx="0.5"/>
-                <rect x="34.5" y="44" width="1.5" height="1.5" fill="#1e1b4b" rx="0.5"/>
               </>:isSleepy?<>
-                {/* Sleepy yawn */}
-                <rect x="28" y="43" width="8" height="3" fill="#1e1b4b" rx="1"/>
+                <rect x="27" y="43" width="10" height="3.5" fill="#1e1b4b" rx="1.5"/>
               </>:isEating?<>
-                {/* Chewing */}
                 <rect x="28" y="42" width="8" height="3" fill="#1e1b4b" rx="0.5"/>
               </>:isCleaning?<>
-                {/* Contented smile */}
                 <rect x="30" y="43" width="4" height="1.5" fill="#1e1b4b" rx="0.5"/>
               </>:isLearning?<>
-                {/* Focused — tiny mouth */}
-                <rect x="31" y="43" width="2" height="1.5" fill="#1e1b4b" rx="0.5"/>
-              </>:isEvolving?<>
-                {/* Awe */}
-                <rect x="29" y="42" width="6" height="5" fill="#1e1b4b" rx="1"/>
-              </>:<>
-                {/* Neutral */}
                 <rect x="31" y="43" width="2.5" height="1.5" fill="#1e1b4b" rx="0.5"/>
+              </>:isEvolving?<>
+                <rect x="27" y="42" width="10" height="5" fill="#1e1b4b" rx="1"/>
+              </>:<>
+                <rect x="30" y="43" width="4" height="1.5" fill="#1e1b4b" rx="0.5"/>
               </>}
             </g>
 
