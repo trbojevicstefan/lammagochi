@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@lamagotchi/core": ["../../packages/core/src/index.ts"],
+      "@lamagotchi/ai-adapter": ["../../packages/ai-adapter/src/index.ts"],
+      "@lamagotchi/persistence": ["../../packages/persistence/src/index.ts"],
+      "@lamagotchi/ui": ["../../packages/ui/src/index.tsx"]
+    }
+  },
+  "include": ["src"]
+}

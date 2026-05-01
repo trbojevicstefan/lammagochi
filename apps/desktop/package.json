@@ -1,0 +1,34 @@
+{
+  "name": "@lamagotchi/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint:desktop TODO'",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@lamagotchi/ai-adapter": "workspace:*",
+    "@lamagotchi/core": "workspace:*",
+    "@lamagotchi/persistence": "workspace:*",
+    "@lamagotchi/ui": "workspace:*",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.176.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.20",
+    "vitest": "^2.1.9"
+  }
+}
