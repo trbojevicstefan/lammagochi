@@ -25,9 +25,10 @@ export const CreatureCanvas3D = ({
   currentAnimation,
 }: Props) => {
   const mood = deriveCreatureMood(stats);
+  const isEvolving = currentAnimation === 'evolving';
 
   return (
-    <div className="viewport-container">
+    <div className={`viewport-container ${isEvolving ? 'viewport--shaking' : ''}`}>
       {/* 3D atmosphere layer (particles, ambient effects) */}
       <div className="viewport-3d-layer">
         <Canvas

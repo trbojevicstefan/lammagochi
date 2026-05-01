@@ -69,7 +69,7 @@ export const StatMeter = ({
       </div>
       <div className="stat-meter__track">
         <div
-          className="stat-meter__fill"
+          className={`stat-meter__fill ${value <= 20 ? 'stat-meter__fill--critical' : ''}`}
           style={{
             width: `${displayPct}%`,
             background: colors.bar,
