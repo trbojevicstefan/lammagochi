@@ -81,7 +81,8 @@ interface AppState {
   actionCounts: ActionCounts;
   currentAnimation: PetAnimationName | null;
   prevLevel: number;
-  lastCheckIn: string; // ISO date string
+  lastCheckIn: string;
+  currentSkin: string;
   // Actions
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
@@ -99,6 +100,7 @@ interface AppState {
   clearUserInput: () => void;
   addChatMessage: (msg: ChatMessage) => void;
   toggleSound: () => void;
+  setSkin: (skin: string) => void;
   clearAnimation: () => void;
   hydrateFromLocal: () => void;
   persistToLocal: () => void;
@@ -159,6 +161,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentAnimation: null,
   prevLevel: 1,
   lastCheckIn: '',
+  currentSkin: 'none',
 
   setPetName: (name) => {
     soundEffects.chirp();
@@ -211,6 +214,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleSound: () =>
     set((state) => ({ soundEnabled: !state.soundEnabled })),
+
+  setSkin: (skin) => set({ currentSkin: skin }),
 
   clearAnimation: () => set({ currentAnimation: null }),
 
@@ -566,6 +571,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         soundEnabled: typeof parsed.soundEnabled === 'boolean' ? parsed.soundEnabled : true,
         actionCounts: (parsed.actionCounts as ActionCounts) ?? { ...defaultCounts },
         lastCheckIn: typeof parsed.lastCheckIn === 'string' ? parsed.lastCheckIn : '',
+        currentSkin: typeof parsed.currentSkin === 'string' ? parsed.currentSkin : 'none',
       });
     } catch {
       // ignore invalid local state
@@ -593,6 +599,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       soundEnabled: state.soundEnabled,
       actionCounts: state.actionCounts,
       lastCheckIn: state.lastCheckIn,
+      currentSkin: state.currentSkin,
     };
     localStorage.setItem('lamagotchi.v2', JSON.stringify(snapshot));
   },

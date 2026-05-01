@@ -6,6 +6,7 @@ import { CreatureCanvas3D } from './CreatureCanvas3D';
 import { useAppStore, type ChatMessage } from './store';
 import { buildLamagotchiSystemPrompt } from './game/promptBuilder';
 import { chooseAutonomousPrompt } from './game/simulationTick';
+import { generateHeartbeatPrompt } from './game/systemPrompt';
 import { getEvolutionStage, getEvolutionName } from './game/evolution';
 import { getUpcoming } from './game/stageAbilities';
 import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer, ItemRibbon } from './ui';
@@ -32,6 +33,7 @@ export const App = () => {
   const [interactionSpark, setInteractionSpark] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const sparkTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const lastInteractionRef = useRef(Date.now());
 
   const {
     stage,
@@ -53,7 +55,9 @@ export const App = () => {
     achievements,
     soundEnabled,
     currentAnimation,
+    currentSkin,
     setPetName,
+    setSkin,
     setModelName,
     startHatch,
     completeHatch,
@@ -91,6 +95,7 @@ export const App = () => {
 
   // Trigger spark animation
   const spark = useCallback(() => {
+    lastInteractionRef.current = Date.now();
     setInteractionSpark(1);
     if (sparkTimeout.current) clearTimeout(sparkTimeout.current);
     sparkTimeout.current = setTimeout(() => setInteractionSpark(0), 600);
@@ -168,13 +173,16 @@ export const App = () => {
     return () => clearInterval(id);
   }, [refreshDayPhase]);
 
-  // Autonomous prompts
+  // Heartbeat watchdog + autonomous prompts
   useEffect(() => {
     const id = setInterval(() => {
       if (stage !== 'alive' || isStreaming) return;
-      const prompt = chooseAutonomousPrompt(stats, dayPhase);
+      const minsSinceInteraction = (Date.now() - lastInteractionRef.current) / 60000;
+      // Try heartbeat first (contextual responses)
+      const heartbeat = generateHeartbeatPrompt(stats, dayPhase, minsSinceInteraction);
+      const prompt = heartbeat || chooseAutonomousPrompt(stats, dayPhase);
       if (prompt) setBubbleText(capWords(prompt, level) || prompt);
-    }, 20000);
+    }, 15000); // Check every 15s
     return () => clearInterval(id);
   }, [capWords, dayPhase, isStreaming, level, setBubbleText, stage, stats]);
 
@@ -204,9 +212,10 @@ export const App = () => {
         modelName,
         stats,
         taskDifficulty,
+        petName,
         memoryLines: memoryItems.filter((m) => m.approved).slice(0, 4).map((m) => `- ${m.title}: ${m.content}`),
       }),
-    [dayPhase, level, memoryItems, modelName, stage, stats, taskDifficulty],
+    [dayPhase, level, memoryItems, modelName, stage, stats, taskDifficulty, petName],
   );
 
   // Send chat message to LLM
@@ -380,6 +389,7 @@ export const App = () => {
               hatchProgress={hatchProgress}
               interactionSpark={interactionSpark}
               currentAnimation={currentAnimation}
+              skin={currentSkin}
             />
           </div>
           {stage === 'alive' && (
@@ -677,6 +687,8 @@ export const App = () => {
         wordCap={getWordCapForLevel(level)}
         onRename={(name) => { setPetName(name); setSettingsOpen(false); }}
         onToggleSound={toggleSound}
+        currentSkin={currentSkin}
+        onSetSkin={setSkin}
       />
     </main>
   );

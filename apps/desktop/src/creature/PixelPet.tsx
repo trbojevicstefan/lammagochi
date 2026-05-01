@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { CreatureMood } from '../game/creatureBehavior';
+import { getLevelScale, type PetSkin } from '../game/evolution';
 
 /* ================================================================
-   PixelPet v2 — Production-quality 60fps pixel-art creature
+   PixelPet v3 — 60fps, per-level granular scaling, skin system
    Hatchling 16-bit Retro-Future Arcade design language
-   Palette: Indigo-900 primary, Cyan-400 energy, Orange-500 satiety, Pink-500 mood
    ================================================================ */
 
 type PetAnim = 'idle'|'happy'|'sleepy'|'eating'|'cleaning'|'playing'|'learning'|'daydreaming'|'excited'|'evolving'|'craving';
-type PetCostume = 'none' | 'wizard' | 'ninja' | 'astronaut';
 
 type Props = {
   level: number;
@@ -16,7 +15,7 @@ type Props = {
   dayPhase: 'morning' | 'day' | 'evening' | 'night';
   isStreaming?: boolean;
   interactionSpark?: number;
-  costume?: PetCostume;
+  skin?: PetSkin;
   actionAnimation?: string | null;
 };
 
@@ -35,7 +34,8 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.min(t, 1);
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeInOut = (t: number) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 
-export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark = 0, costume = 'none', actionAnimation }: Props) => {
+export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark = 0, skin = 'none', actionAnimation }: Props) => {
+  const levelScale = getLevelScale(level);
   // Smooth animation state — lerp toward target
   const animRef = useRef({ bx: 0, by: 0, sx: 1, sy: 1, wiggle: 0, sway: 0, flash: 0, evolvePulse: 0 });
   const targetRef = useRef({ bx: 0, by: 0, sx: 1, sy: 1, wiggle: 0, sway: 0, flash: 0 });
@@ -75,46 +75,45 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
       // Compute target animation values
       const tg = { bx: 0, by: 0, sx: 1, sy: 1, wiggle: 0, sway: 0, flash: 0 };
 
-      // Breathing (base idle)
-      const breatheSpeed = st.isEgg ? 1.5 : st.isSage ? 0.4 : 0.7;
-      tg.by = Math.sin(t * breatheSpeed * Math.PI * 2) * (st.isEgg ? 2 : 3);
-      tg.sx = 1 + Math.cos(t * breatheSpeed * Math.PI * 2) * 0.015;
-      tg.sy = 1 - Math.sin(t * breatheSpeed * Math.PI * 2) * 0.025;
+      // Breathing (base idle) — subtle, slow, barely perceptible
+      const breatheSpeed = st.isEgg ? 1.0 : 0.45; // slow breathing
+      tg.by = Math.sin(t * breatheSpeed * Math.PI * 2) * 1.2; // just 1.2px gentle float
+      tg.sx = 1 + Math.cos(t * breatheSpeed * Math.PI * 2) * 0.006; // 0.6% width change — barely visible
+      tg.sy = 1 - Math.sin(t * breatheSpeed * Math.PI * 2) * 0.008; // 0.8% height change — subtle
 
-      // Animation-specific overrides
+      // Animation-specific overrides (reduced amplitudes)
       if (anim === 'excited' || anim === 'playing') {
-        const bounce = Math.abs(Math.sin(t * 3.5)) * 12;
+        const bounce = Math.abs(Math.sin(t * 2.8)) * 6; // smaller bounce
         tg.by = -bounce;
-        tg.sy = 1 + bounce / 25;
-        tg.sx = 1 - bounce / 35;
+        tg.sy = 1 + bounce / 60; // much less squash
+        tg.sx = 1 - bounce / 80; // much less stretch
       }
       if (anim === 'happy') {
-        tg.wiggle = Math.sin(t * 4) * 2.5;
-        tg.sy = 1 + Math.sin(t * 4) * 0.02;
+        tg.wiggle = Math.sin(t * 3) * 1.5;
+        tg.by = Math.sin(t * 3) * 0.8;
       }
       if (anim === 'sleepy' || anim === 'daydreaming') {
-        tg.sway = Math.sin(t * 1.4) * 2.5;
-        tg.sy = 1 - 0.03;
+        tg.sway = Math.sin(t * 1.0) * 1.8; // slow gentle sway
       }
       if (anim === 'craving') {
-        tg.wiggle = Math.sin(t * 6) * 1.5;
-        tg.by = Math.sin(t * 8) * 1.5;
+        tg.wiggle = Math.sin(t * 5) * 1.0;
+        tg.by = Math.sin(t * 6) * 0.8;
       }
       if (anim === 'evolving') {
-        tg.sx = 1 + Math.sin(t * 3) * 0.06;
-        tg.sy = 1 + Math.sin(t * 3) * 0.06;
-        tg.flash = 0.5 + Math.sin(t * 5) * 0.5;
+        tg.sx = 1 + Math.sin(t * 2) * 0.03; // gentle pulse
+        tg.sy = 1 + Math.sin(t * 2) * 0.03;
+        tg.flash = 0.4 + Math.sin(t * 4) * 0.3;
       }
 
-      // Blend into target
+      // Blend into target — slower lerp for smoother motion
       const cur = animRef.current;
-      cur.bx = lerp(cur.bx, tg.bx, 0.25);
-      cur.by = lerp(cur.by, tg.by, 0.25);
-      cur.sx = lerp(cur.sx, tg.sx, 0.25);
-      cur.sy = lerp(cur.sy, tg.sy, 0.25);
-      cur.wiggle = lerp(cur.wiggle, tg.wiggle, 0.2);
-      cur.sway = lerp(cur.sway, tg.sway, 0.2);
-      cur.flash = lerp(cur.flash, tg.flash, 0.15);
+      cur.bx = lerp(cur.bx, tg.bx, 0.12);
+      cur.by = lerp(cur.by, tg.by, 0.12);
+      cur.sx = lerp(cur.sx, tg.sx, 0.10);
+      cur.sy = lerp(cur.sy, tg.sy, 0.10);
+      cur.wiggle = lerp(cur.wiggle, tg.wiggle, 0.10);
+      cur.sway = lerp(cur.sway, tg.sway, 0.08);
+      cur.flash = lerp(cur.flash, tg.flash, 0.08);
 
       setRender(Math.floor(frameRef.current * 20) % 10000);
       rafRef.current = requestAnimationFrame(tick);
@@ -141,14 +140,22 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
   /* ================================================================
      Hatchling Color Palette
      ================================================================ */
-  const bodyMain = st.isSage ? '#312e81' : st.isCompanion ? '#4338ca' : st.isLearner ? '#4f46e5' : st.isToddler ? '#6366f1' : '#818cf8';
-  const bodyLight = st.isSage ? '#4338ca' : st.isCompanion ? '#6366f1' : '#818cf8';
-  const bodyDark = st.isSage ? '#1e1b4b' : st.isCompanion ? '#3730a3' : '#4f46e5';
-  const crestColor = st.isSage ? '#06b6d4' : '#fbbf24';
-  const crestLight = st.isSage ? '#22d3ee' : '#f59e0b';
+  // Skin colors override stage defaults
+  const skinMap: Record<string, [string, string, string]> = {
+    none: [st.isSage?'#312e81':st.isCompanion?'#4338ca':st.isLearner?'#4f46e5':st.isToddler?'#6366f1':'#818cf8', st.isSage?'#4338ca':'#818cf8', st.isSage?'#1e1b4b':'#4f46e5'],
+    wizard: ['#7e22ce','#a855f7','#581c87'], ninja: ['#1e293b','#334155','#0f172a'],
+    astronaut: ['#e2e8f0','#f8fafc','#94a3b8'], aurora: ['#06b6d4','#67e8f9','#0891b2'],
+    inferno: ['#ef4444','#fca5a5','#991b1b'], ocean: ['#2563eb','#93c5fd','#1e3a5f'],
+    forest: ['#16a34a','#86efac','#14532d'],
+  };
+  const [bodyMain, bodyLight, bodyDark] = skinMap[skin] || skinMap.none;
+  const crestColor = skin === 'none' ? (st.isSage ? '#06b6d4' : '#fbbf24') : bodyLight;
+  const crestLight = skin === 'none' ? (st.isSage ? '#22d3ee' : '#f59e0b') : bodyLight;
 
   return (
     <div className="pixel-pet-wrapper" style={{
+      width: `${256 * levelScale}px`,
+      height: `${256 * levelScale}px`,
       filter: `brightness(${brightness}) contrast(${contrast}) drop-shadow(0 12px 20px rgba(0,0,0,0.4))`,
       transition: flash > 0.1 ? 'none' : 'filter 0.4s ease-out',
     }}>
@@ -184,7 +191,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
           {!st.isEgg && (
             <>
               {/* Ninja sword behind body */}
-              {costume === 'ninja' && (
+              {skin === 'ninja' && (
                 <g>
                   <rect x="10" y="12" width="4" height="26" transform="rotate(-30 12 25)" fill="#cbd5e1" />
                   <rect x="8" y="34" width="8" height="4" transform="rotate(-30 12 25)" fill="#334155" />
@@ -197,7 +204,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
                   <rect x="27" y="13" width="10" height="12" fill={crestColor} rx="1" />
                   <rect x="29" y="9" width="6" height="4" fill={crestLight} rx="1" />
                   <rect x="30" y="10" width="3" height="2" fill="#fef3c7" />
-                  {costume === 'wizard' && (
+                  {skin === 'wizard' && (
                     <g style={{ transform: 'translateY(-6px)' }}>
                       <polygon points="32,0 14,22 50,22" fill="#7e22ce" />
                       <rect x="6" y="22" width="52" height="4" rx="2" fill="#6b21a8" />
@@ -226,7 +233,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
               <rect x="15" y="28" width="4" height="16" rx="1" fill={bodyDark} opacity="0.6" />
 
               {/* Ninja headband */}
-              {costume === 'ninja' && (
+              {skin === 'ninja' && (
                 <g>
                   <rect x="13" y="26" width="38" height="4" fill="#dc2626" />
                   <rect x="6" y={26 + Math.sin(frameRef.current * 2) * 1} width="7" height="2" fill="#b91c1c" />
@@ -244,7 +251,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
               )}
 
               {/* Astronaut chest */}
-              {costume === 'astronaut' && (
+              {skin === 'astronaut' && (
                 <g>
                   <rect x="23" y="40" width="18" height="11" rx="2" fill="#f1f5f9" opacity="0.9" />
                   <rect x="25" y="42" width="3" height="3" fill="#ef4444" />
@@ -316,14 +323,14 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
               {st.hasHands && (
                 <g>
                   <rect x="8" y={34 + (resolvedAnim === 'excited' || resolvedAnim === 'playing' ? -9 : 0)} width="8" height="8" rx="2"
-                    fill={st.isSage ? '#6366f1' : costume === 'astronaut' ? '#f1f5f9' : bodyLight} />
+                    fill={st.isSage ? '#6366f1' : skin === 'astronaut' ? '#f1f5f9' : bodyLight} />
                   <rect x="48" y={34 + (resolvedAnim === 'excited' || resolvedAnim === 'playing' ? -9 : 0)} width="8" height="8" rx="2"
-                    fill={st.isSage ? '#6366f1' : costume === 'astronaut' ? '#f1f5f9' : bodyLight} />
+                    fill={st.isSage ? '#6366f1' : skin === 'astronaut' ? '#f1f5f9' : bodyLight} />
                 </g>
               )}
 
               {/* Astronaut helmet */}
-              {costume === 'astronaut' && (
+              {skin === 'astronaut' && (
                 <g>
                   <rect x="8" y="12" width="48" height="42" rx="20" fill="#7dd3fc" opacity="0.25" />
                   <rect x="12" y="16" width="14" height="7" rx="3" fill="white" opacity="0.35" />
@@ -391,7 +398,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark 
         {/* Wand (excited wizard) */}
         {resolvedAnim === 'excited' && st.hasHands && (
           <g style={{ transform: `translate(42px, ${26 + by}px)` }}>
-            {costume === 'wizard' ? (
+            {skin === 'wizard' ? (
               <>
                 <rect x="0" y="-18" width="2.5" height="20" fill="#854d0e" />
                 <rect x="-3" y="-22" width="8" height="8" fill="#facc15" rx="1" />

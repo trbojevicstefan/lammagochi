@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { SKINS, getUnlockedSkins, type PetSkin } from '../game/evolution';
+
 type SettingsPanelProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -10,8 +12,10 @@ type SettingsPanelProps = {
   xp: number;
   stage: string;
   wordCap: number;
+  currentSkin: string;
   onRename: (name: string) => void;
   onToggleSound: () => void;
+  onSetSkin: (skin: string) => void;
 };
 
 export const SettingsPanel = ({
@@ -26,6 +30,8 @@ export const SettingsPanel = ({
   wordCap,
   onRename,
   onToggleSound,
+  currentSkin,
+  onSetSkin,
 }: SettingsPanelProps) => {
   const [editName, setEditName] = useState(petName);
 
@@ -72,6 +78,40 @@ export const SettingsPanel = ({
               <button onClick={onToggleSound} className="settings-toggle">
                 {soundEnabled ? '🔊 ON' : '🔇 OFF'}
               </button>
+            </div>
+          </section>
+
+          {/* Skins */}
+          <section className="settings-section">
+            <h3>Skins</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {getUnlockedSkins(level).map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => onSetSkin(s.id)}
+                  className={currentSkin === s.id ? 'settings-skin--active' : ''}
+                  style={{
+                    padding: '6px 10px',
+                    border: currentSkin === s.id ? '2px solid var(--accent-cyan)' : '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)',
+                    background: currentSkin === s.id ? 'rgba(34,211,238,0.1)' : 'rgba(99,102,241,0.05)',
+                    fontSize: '0.7rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                  title={s.name}
+                >
+                  <span>{s.icon}</span>
+                  <span>{s.name}</span>
+                </button>
+              ))}
+              {SKINS.filter((s) => s.unlockLevel > level).length > 0 && (
+                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', padding: '6px 4px' }}>
+                  +{SKINS.filter((s) => s.unlockLevel > level).length} more to unlock
+                </span>
+              )}
             </div>
           </section>
 
