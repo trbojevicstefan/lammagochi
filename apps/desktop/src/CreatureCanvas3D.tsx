@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import type { Stats } from '@lamagotchi/core';
 import { deriveCreatureMood } from './game/creatureBehavior';
 import { PixelPet, EggModel, Environment, ParticleEffects, HatchSequence } from './creature';
+import { determineEmotion } from './game/emotions';
 
 type Props = {
   stage: 'onboarding' | 'named_egg' | 'hatching' | 'alive';
@@ -27,8 +28,9 @@ export const CreatureCanvas3D = ({
   skin = 'none',
 }: Props) => {
   const mood = deriveCreatureMood(stats);
+  const emotionId = determineEmotion(mood, stats.hunger, stats.energy, stats.trust, isStreaming || false, currentAnimation === 'evolving', dayPhase === 'night');
   const isEvolving = currentAnimation === 'evolving';
-  const moodClass = mood === 'sleepy' ? 'viewport--sleepy' : mood === 'calm' ? 'viewport--calm' : mood === 'curious' ? 'viewport--excited' : '';
+  const moodClass = emotionId === 'sleepy' ? 'viewport--sleepy' : emotionId === 'happy' ? 'viewport--calm' : emotionId === 'excited' ? 'viewport--excited' : '';
 
   return (
     <div className={`viewport-container ${isEvolving ? 'viewport--shaking' : ''} ${moodClass}`}>
@@ -76,6 +78,7 @@ export const CreatureCanvas3D = ({
             isStreaming={isStreaming}
             interactionSpark={interactionSpark}
             actionAnimation={currentAnimation}
+            emotion={emotionId}
             skin={skin as any}
           />
         </div>

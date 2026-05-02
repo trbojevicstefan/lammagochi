@@ -10,7 +10,9 @@ import { generateHeartbeatPrompt } from './game/systemPrompt';
 import { getEvolutionStage, getEvolutionName } from './game/evolution';
 import { getUpcoming } from './game/stageAbilities';
 import { getWeather, weatherIcons } from './game/weather';
-import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer, ItemRibbon } from './ui';
+import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer, ItemRibbon, showToast } from './ui';
+import { MiniGameOverlay } from './ui/MiniGameOverlay';
+import { getCurrentSlot, checkRoutineStreak } from './game/routine';
 import { soundEffects } from './audio/soundEffects';
 
 const adapter = new OllamaHttpAdapter();
@@ -33,6 +35,7 @@ export const App = () => {
   const [sideTab, setSideTab] = useState<'care' | 'chat' | 'memory' | 'journal' | 'skills'>('care');
   const [interactionSpark, setInteractionSpark] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [miniGameOpen, setMiniGameOpen] = useState(false);
   const sparkTimeout = useRef<ReturnType<typeof setTimeout>>();
   const lastInteractionRef = useRef(Date.now());
   const abortRef = useRef<AbortController | null>(null);
@@ -180,6 +183,16 @@ export const App = () => {
     const id = setInterval(() => refreshDayPhase(), 30000);
     return () => clearInterval(id);
   }, [refreshDayPhase]);
+
+  // Routine timer
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (stage !== 'alive') return;
+      const slot = getCurrentSlot();
+      if (slot) checkRoutineStreak();
+    }, 60000);
+    return () => clearInterval(id);
+  }, [stage]);
 
   // Heartbeat watchdog + autonomous prompts
   useEffect(() => {
@@ -390,6 +403,9 @@ export const App = () => {
             title="Settings"
           >
             ⚙️
+          </button>
+          <button onClick={() => setMiniGameOpen(true)} style={{ fontSize:'0.7rem', padding:'4px 8px' }} title="Mini-Games">
+            🎮
           </button>
         </div>
       </header>
@@ -767,6 +783,12 @@ export const App = () => {
         onSetSkin={setSkin}
         onExport={exportSave}
         onImport={importSave}
+      />
+      <MiniGameOverlay
+        level={level}
+        onClose={() => setMiniGameOpen(false)}
+        isOpen={miniGameOpen}
+        onReward={(xp, msg) => { showToast('xp', `+${xp} XP`, msg, 3000); }}
       />
     </main>
   );

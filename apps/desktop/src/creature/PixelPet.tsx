@@ -3,6 +3,7 @@ import type { CreatureMood } from '../game/creatureBehavior';
 import { getLevelScale, type PetSkin } from '../game/evolution';
 import { PropsRenderer } from './PropsRenderer';
 import { LimbsRenderer } from './LimbsRenderer';
+import { getEmotion, type EmotionId } from '../game/emotions';
 
 /* ================================================================
    PixelPet v4 — AAAA Game Animation Quality
@@ -11,12 +12,12 @@ import { LimbsRenderer } from './LimbsRenderer';
    ================================================================ */
 
 type PetAnim = 'idle'|'happy'|'sleepy'|'eating'|'cleaning'|'playing'|'learning'|'daydreaming'|'excited'|'evolving'|'craving';
-type Props = { level:number; mood:CreatureMood; dayPhase:'morning'|'day'|'evening'|'night'; isStreaming?:boolean; interactionSpark?:number; skin?:PetSkin; actionAnimation?:string|null; };
+type Props = { level:number; mood:CreatureMood; dayPhase:'morning'|'day'|'evening'|'night'; isStreaming?:boolean; interactionSpark?:number; skin?:PetSkin; actionAnimation?:string|null; emotion?:string; };
 
 const moodToAnim: Record<CreatureMood, PetAnim> = { calm:'idle', hungry:'craving', sleepy:'sleepy', curious:'excited', dirty:'craving' };
 const lerp = (a:number,b:number,t:number) => a+(b-a)*Math.min(t,1);
 
-export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=0, skin='none', actionAnimation }: Props) => {
+export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=0, skin='none', actionAnimation, emotion }: Props) => {
   const levelScale = getLevelScale(level);
   const st = (lvl:number) => ({
     isEgg:lvl<=1, isInfant:lvl>=2&&lvl<=5, isToddler:lvl>=6&&lvl<=10,
@@ -202,18 +203,10 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
       c.wiggle=lerp(c.wiggle,tg.wiggle,0.08); c.sway=lerp(c.sway,tg.sway,0.06);
       c.flash=lerp(c.flash,tg.flash,0.06);
 
-      // === EXPRESSION BLEND TARGETS (game-quality face) ===
+      // === EXPRESSION BLEND TARGETS — emotion-driven ===
       const e = exprRef.current;
-      const eTgt = { eyeH:8, eyeY:31, squint:0, browY:0, browAngle:0, mouthW:4, mouthH:1.5, mouthY:43, mouthCurve:0, blushA:0.2, pupilH:5 };
-      if(anim==='happy'||anim==='playing'){ eTgt.eyeH=5; eTgt.eyeY=33; eTgt.squint=0.7; eTgt.browY=-1; eTgt.mouthW=6; eTgt.mouthH=3; eTgt.mouthCurve=1; eTgt.blushA=0.8; }
-      if(anim==='excited'){ eTgt.eyeH=9; eTgt.eyeY=30; eTgt.squint=0; eTgt.browY=-2; eTgt.mouthW=8; eTgt.mouthH=6; eTgt.mouthCurve=0; eTgt.blushA=0.6; eTgt.pupilH=6; }
-      if(anim==='craving'){ eTgt.eyeH=7; eTgt.eyeY=32; eTgt.squint=0.3; eTgt.browY=1.5; eTgt.browAngle=-8; eTgt.mouthW=6; eTgt.mouthH=1.5; eTgt.mouthY=44; eTgt.mouthCurve=-1; eTgt.blushA=0.3; }
-      if(anim==='sleepy'||anim==='daydreaming'){ eTgt.eyeH=2; eTgt.eyeY=34; eTgt.browY=0; eTgt.mouthW=8; eTgt.mouthH=3; eTgt.mouthY=43; eTgt.mouthCurve=0; eTgt.blushA=0.15; }
-      if(anim==='eating'){ eTgt.eyeH=6; eTgt.eyeY=32; eTgt.squint=0.5; eTgt.mouthW=8; eTgt.mouthH=3; eTgt.mouthCurve=0; eTgt.blushA=0.3; }
-      if(anim==='cleaning'){ eTgt.eyeH=8; eTgt.eyeY=31; eTgt.squint=0; eTgt.mouthW=4; eTgt.mouthH=1.5; eTgt.mouthCurve=0.5; eTgt.blushA=0.3; }
-      if(anim==='learning'){ eTgt.eyeH=7; eTgt.eyeY=32; eTgt.squint=0.1; eTgt.browY=0; eTgt.mouthW=2; eTgt.mouthH=1.5; eTgt.blushA=0.15; }
-      if(anim==='evolving'){ eTgt.eyeH=9; eTgt.eyeY=30; eTgt.squint=0; eTgt.browY=-1; eTgt.mouthW=8; eTgt.mouthH=5; eTgt.mouthCurve=0; eTgt.blushA=0.4; eTgt.pupilH=6; }
-      // Blend expressions smoothly (slower blend = more natural)
+      const emo = getEmotion((emotion as EmotionId) || 'happy');
+      const eTgt = { ...emo.face };
       e.eyeH=lerp(e.eyeH,eTgt.eyeH,0.08); e.eyeY=lerp(e.eyeY,eTgt.eyeY,0.08);
       e.squint=lerp(e.squint,eTgt.squint,0.06); e.browY=lerp(e.browY,eTgt.browY,0.06);
       e.browAngle=lerp(e.browAngle,eTgt.browAngle,0.04); e.mouthW=lerp(e.mouthW,eTgt.mouthW,0.08);
@@ -353,8 +346,8 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
             {/* Ocean ripples */}
             {skin==='ocean'&&(<g opacity="0.4"><rect x="18" y="40" width="28" height="1" fill="#93c5fd"/><rect x="20" y="42" width="24" height="1" fill="#60a5fa"/></g>)}
 
-            {/* Joint-based limbs */}
-            <LimbsRenderer level={level} anim="idle" emotion={resolvedAnim} bodyW={si.bodyW} bodyH={si.bodyH} bodyMain={bodyMain} bodyLight={bodyLight} bodyDark={bodyDark} />
+            {/* Joint-based limbs — mapped to emotion */}
+            <LimbsRenderer level={level} anim={resolvedAnim === 'idle' ? 'idle' : resolvedAnim === 'playing' ? 'dance' : resolvedAnim === 'excited' ? 'wave' : resolvedAnim === 'happy' ? 'clap' : resolvedAnim === 'sleepy' ? 'sit' : resolvedAnim === 'eating' ? 'tummy' : 'idle'} emotion={emotion || 'happy'} bodyW={si.bodyW} bodyH={si.bodyH} bodyMain={bodyMain} bodyLight={bodyLight} bodyDark={bodyDark} />
 
             {/* ====== FACE — Expression-driven ====== */}
             <g>
