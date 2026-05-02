@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 import { SKINS, getUnlockedSkins, type PetSkin } from '../game/evolution';
 import type { PetPersonality } from '../game/personality';
@@ -18,6 +18,8 @@ type SettingsPanelProps = {
   onRename: (name: string) => void;
   onToggleSound: () => void;
   onSetSkin: (skin: string) => void;
+  onExport: () => string;
+  onImport: (json: string) => void;
 };
 
 export const SettingsPanel = ({
@@ -35,7 +37,24 @@ export const SettingsPanel = ({
   currentSkin,
   personality,
   onSetSkin,
+  onExport,
+  onImport,
 }: SettingsPanelProps) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const handleExport = () => {
+    const json = onExport();
+    const blob = new Blob([json], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='lamagotchi-save.json'; a.click();
+    URL.revokeObjectURL(url);
+  };
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onImport(reader.result as string);
+    reader.readAsText(file);
+  };
   const [editName, setEditName] = useState(petName);
 
   if (!isOpen) return null;
@@ -134,6 +153,17 @@ export const SettingsPanel = ({
             <p className="settings-note">
               Model selection happens automatically from your local Ollama instance.
             </p>
+          </section>
+
+          {/* Save Management */}
+          <section className="settings-section">
+            <h3>Save Data</h3>
+            <div style={{display:'flex',gap:'8px'}}>
+              <button onClick={handleExport} style={{flex:1,fontSize:'0.7rem'}}>📥 Export Save</button>
+              <button onClick={()=>fileRef.current?.click()} style={{flex:1,fontSize:'0.7rem'}}>📤 Import Save</button>
+              <input ref={fileRef} type="file" accept=".json" onChange={handleImport} style={{display:'none'}} />
+            </div>
+            <p className="settings-note" style={{marginTop:'6px'}}>Export to backup your pet. Import to restore from a previous save.</p>
           </section>
 
           {/* About */}

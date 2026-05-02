@@ -85,6 +85,7 @@ interface AppState {
   prevLevel: number;
   lastCheckIn: string;
   currentSkin: string;
+  previousState: string | null; // JSON snapshot for undo
   behaviorEvents: BehaviorEvent[];
   preferences: PetPreferences;
   personality: PetPersonality;
@@ -106,6 +107,8 @@ interface AppState {
   addChatMessage: (msg: ChatMessage) => void;
   toggleSound: () => void;
   setSkin: (skin: string) => void;
+  exportSave: () => string;
+  importSave: (json: string) => void;
   clearAnimation: () => void;
   hydrateFromLocal: () => void;
   persistToLocal: () => void;
@@ -167,6 +170,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   prevLevel: 1,
   lastCheckIn: '',
   currentSkin: 'none',
+  previousState: null,
   behaviorEvents: [],
   preferences: createEmptyPreferences(),
   personality: generatePersonality(),
@@ -226,6 +230,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ soundEnabled: !state.soundEnabled })),
 
   setSkin: (skin) => set({ currentSkin: skin }),
+  exportSave: () => {
+    const s = get();
+    return JSON.stringify({ stage:s.stage, petName:s.petName, level:s.level, xp:s.xp, stats:s.stats, memoryItems:s.memoryItems, journalEntries:s.journalEntries, achievements:s.achievements, evolutionStage:s.evolutionStage, actionCounts:s.actionCounts, currentSkin:s.currentSkin, personality:s.personality, preferences:s.preferences }, null, 2);
+  },
+  importSave: (json: string) => {
+    try {
+      const p = JSON.parse(json);
+      set((s) => ({ ...s, stage:p.stage||s.stage, petName:p.petName||s.petName, level:p.level||s.level, xp:p.xp||s.xp, stats:p.stats||s.stats, memoryItems:p.memoryItems||s.memoryItems, journalEntries:p.journalEntries||s.journalEntries, achievements:p.achievements||s.achievements, evolutionStage:p.evolutionStage||s.evolutionStage, currentSkin:p.currentSkin||s.currentSkin, personality:p.personality||s.personality }));
+      showToast('info', '💾 Save imported!', 'Game state restored', 3000);
+    } catch { showToast('warning', 'Invalid save file', '', 2000); }
+  },
 
   clearAnimation: () => set({ currentAnimation: null }),
 

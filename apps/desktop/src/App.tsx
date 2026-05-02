@@ -34,6 +34,7 @@ export const App = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const sparkTimeout = useRef<ReturnType<typeof setTimeout>>();
   const lastInteractionRef = useRef(Date.now());
+  const abortRef = useRef<AbortController | null>(null);
 
   const {
     stage,
@@ -61,6 +62,8 @@ export const App = () => {
     personality,
     setPetName,
     setSkin,
+    exportSave,
+    importSave,
     setModelName,
     startHatch,
     completeHatch,
@@ -226,6 +229,11 @@ export const App = () => {
     if (stage !== 'alive' || !userInput.trim() || isStreaming || modelName === 'Not connected') return;
     const userMessage = userInput.trim();
 
+    // Abort any existing stream
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     // Add user message to chat
     const userMsg: ChatMessage = {
       id: `msg_${Date.now()}`,
@@ -249,6 +257,7 @@ export const App = () => {
           { role: 'user', content: userMessage },
         ],
         temperature: 0.7,
+        signal: controller.signal,
       })) {
         if (!chunk.content) continue;
         full += chunk.content;
@@ -672,13 +681,23 @@ export const App = () => {
             }}
             disabled={stage !== 'alive' || isStreaming}
           />
-          <button
-            onClick={sendUserMessage}
-            disabled={stage !== 'alive' || isStreaming}
-            className="btn-primary"
-          >
-            {isStreaming ? '···' : 'Send'}
-          </button>
+          {isStreaming ? (
+            <button
+              onClick={() => { abortRef.current?.abort(); setStreaming(false); setBubbleText('...'); }}
+              className="btn-primary"
+              style={{ background: 'rgba(248,113,113,0.2)', borderColor: '#f87171', color: '#f87171' }}
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              onClick={sendUserMessage}
+              disabled={stage !== 'alive'}
+              className="btn-primary"
+            >
+              Send
+            </button>
+          )}
         </div>
       </footer>
 
@@ -698,6 +717,8 @@ export const App = () => {
         currentSkin={currentSkin}
         personality={personality}
         onSetSkin={setSkin}
+        onExport={exportSave}
+        onImport={importSave}
       />
     </main>
   );
