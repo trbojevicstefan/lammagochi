@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CreatureMood } from '../game/creatureBehavior';
 import { getLevelScale, type PetSkin } from '../game/evolution';
+import { PropsRenderer } from './PropsRenderer';
 
 /* ================================================================
    PixelPet v4 — AAAA Game Animation Quality
@@ -414,38 +415,8 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
           </>)}
         </g>
 
-        {/* ===== PROPS (outside transform group) ===== */}
-        {resolvedAnim==='eating'&&!si.isEgg&&(<g style={{transform:`translate(22px,${36+by}px)`}}>
-          <rect x="0" y="0" width="12" height="12" fill={skin==='inferno'?'#ef4444':'#f59e0b'} rx="1"/>
-          <rect x="2" y="2" width="8" height="8" fill={skin==='inferno'?'#dc2626':'#b45309'} rx="1"/>
-          <rect x="4" y="4" width="4" height="4" fill="#fef3c7"/>
-        </g>)}
-        {resolvedAnim==='playing'&&si.hasHands&&(<g style={{transform:`translate(44px,${30+by}px)`}}>
-          <rect x="0" y="0" width="12" height="12" fill={skin==='ocean'?'#3b82f6':skin==='forest'?'#22c55e':'#fbbf24'} rx="1"/>
-          <rect x="1" y="1" width="4.5" height="4.5" fill={skin==='ocean'?'#2563eb':skin==='forest'?'#16a34a':'#f59e0b'}/>
-          <rect x="6.5" y="1" width="4.5" height="4.5" fill="#fef3c7"/>
-          <rect x="1" y="6.5" width="4.5" height="4.5" fill="#fde68a"/>
-          <rect x="6.5" y="6.5" width="4.5" height="4.5" fill={skin==='ocean'?'#2563eb':'#f59e0b'}/>
-        </g>)}
-        {resolvedAnim==='learning'&&si.hasHands&&(<g style={{transform:`translate(12px,${28+by}px)`}}>
-          <rect x="0" y="0" width="15" height="12" fill={skin==='aurora'?'#06b6d4':'#c084fc'} rx="1"/>
-          <rect x="1.5" y="1.5" width="5.5" height="9" fill="#fef3c7"/><rect x="8" y="1.5" width="5.5" height="9" fill="#fef3c7"/>
-          <rect x="2.5" y="2.5" width="3.5" height="2" fill={skin==='aurora'?'#67e8f9':'#a78bfa'}/>
-          <rect x="9" y="3.5" width="3.5" height="2" fill={skin==='aurora'?'#67e8f9':'#a78bfa'}/>
-        </g>)}
-        {resolvedAnim==='cleaning'&&(<g style={{transform:`translate(26px,${24+by}px)`}}>
-          {[0,1,2,3,4].map(i=><circle key={i} cx={i*4+Math.sin(frameRef.current*3+i)*2} cy={i*3+Math.cos(frameRef.current*2+i)*2} r={6-i*0.8} fill="#bae6fd" opacity={0.55-i*0.1}/>)}
-        </g>)}
-        {resolvedAnim==='daydreaming'&&(<g style={{transform:`translate(44px,${14+by+sway}px)`}}>
-          <circle cx="0" cy="0" r="6" fill={skin==='aurora'?'#67e8f9':'#c084fc'} opacity="0.4"/>
-          <circle cx="9" cy="-7" r="5" fill={skin==='aurora'?'#a78bfa':'#a78bfa'} opacity="0.3"/>
-          <circle cx="16" cy="-14" r="4" fill={skin==='aurora'?'#c084fc':'#818cf8'} opacity="0.2"/>
-          <text x="5" y="-2" fontSize="7" fill={skin==='aurora'?'#67e8f9':'#a78bfa'} fontFamily="monospace" fontWeight="bold">z</text>
-        </g>)}
-        {resolvedAnim==='excited'&&si.hasHands&&(<g style={{transform:`translate(42px,${26+by}px)`}}>
-          {skin==='wizard'?(<><rect x="0" y="-18" width="2.5" height="20" fill="#854d0e"/><rect x="-3" y="-22" width="8" height="8" fill="#facc15" rx="1"/><rect x="-1" y="-20" width="4" height="4" fill="#fef3c7"/></>)
-          :(<><rect x="2" y="0" width="5" height="14" fill="#cbd5e1" rx="1"/><rect x="0" y="0" width="9" height="3.5" fill="#334155" rx="0.5"/><rect x="0" y="10.5" width="9" height="3.5" fill="#334155" rx="0.5"/></>)}
-        </g>)}
+        {/* ===== ACTION PROPS (animating) ===== */}
+        {!si.isEgg && <PropsRenderer anim={resolvedAnim} skin={skin} hasHands={si.hasHands} by={by} sway={sway} />}
       </svg>
 
       <style>{`
