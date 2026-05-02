@@ -1,0 +1,11 @@
+export { canvasEngine } from './CanvasEngine';
+export type { FPSMode } from './CanvasEngine';
+export { PixelRenderer } from './PixelRenderer';
+export { drawPet } from './PetRenderer';
+export { getStage, getStageIndex, STAGES, SKIN_COLORS } from './PetSpec';
+export type { BodySpec, StageId } from './PetSpec';
+export { solveIK } from './IK';
+export type { Point, IKResult } from './IK';
+export { createAnimationState, lerpExpression } from './AnimationState';
+export type { AnimationState, ExpressionBlend } from './AnimationState';
+export { useCanvasPet } from './useCanvasPet';
