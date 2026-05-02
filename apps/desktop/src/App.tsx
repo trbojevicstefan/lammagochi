@@ -30,7 +30,7 @@ export const App = () => {
   const [modelStatus, setModelStatus] = useState('Checking Ollama...');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [feedText, setFeedText] = useState('');
-  const [sideTab, setSideTab] = useState<'care' | 'chat' | 'memory' | 'journal'>('care');
+  const [sideTab, setSideTab] = useState<'care' | 'chat' | 'memory' | 'journal' | 'skills'>('care');
   const [interactionSpark, setInteractionSpark] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const sparkTimeout = useRef<ReturnType<typeof setTimeout>>();
@@ -61,6 +61,7 @@ export const App = () => {
     behaviorEvents,
     preferences,
     personality,
+    skillTrees,
     setPetName,
     setSkin,
     exportSave,
@@ -442,6 +443,12 @@ export const App = () => {
             >
               Journal
             </button>
+            <button
+              className={`tab-btn ${sideTab === 'skills' ? 'tab-btn--active' : ''}`}
+              onClick={() => setSideTab('skills')}
+            >
+              Skills
+            </button>
           </div>
 
           <div className="side-pane" key={sideTab}>
@@ -634,6 +641,41 @@ export const App = () => {
                       </small>
                     </div>
                   ))}
+                </div>
+              </>
+            )}
+            {/* Skills Tab */}
+            {sideTab === 'skills' && (
+              <>
+                <h2>Skill Tree</h2>
+                <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:'8px'}}>
+                  {skillTrees.map(tree => {
+                    const tier = tree.tiers[tree.currentTier];
+                    const nextTier = tree.tiers[tree.currentTier + 1];
+                    return (
+                      <div key={tree.id} style={{
+                        border:'1px solid var(--border-subtle)',borderRadius:'var(--radius-sm)',
+                        padding:'8px',background:'rgba(99,102,241,0.04)',
+                      }}>
+                        <div style={{display:'flex',alignItems:'center',gap:'6px',marginBottom:'4px'}}>
+                          <span style={{fontSize:'1.1rem'}}>{tree.icon}</span>
+                          <span style={{fontWeight:600,fontSize:'0.78rem'}}>{tree.label}</span>
+                          <span style={{marginLeft:'auto',fontSize:'0.6rem',color:'var(--text-muted)'}}>
+                            Lv.{tree.currentTier + 1}/4
+                          </span>
+                        </div>
+                        <div style={{fontSize:'0.68rem',color:'var(--text-secondary)',marginBottom:'4px'}}>
+                          {tier.name}: {tier.description}
+                        </div>
+                        <div style={{height:'3px',background:'rgba(99,102,241,0.1)',borderRadius:'3px',overflow:'hidden'}}>
+                          <div style={{height:'100%',width:`${Math.min(100,(tree.xp/((nextTier||tier).unlockLevel*10))*100)}%`,background:'var(--accent-cyan)',borderRadius:'3px'}}/>
+                        </div>
+                        <div style={{fontSize:'0.58rem',color:'var(--text-muted)',marginTop:'2px'}}>
+                          {tree.xp} XP {nextTier ? `→ ${nextTier.name} at ${nextTier.unlockLevel*10} XP` : '● Mastered!'}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
