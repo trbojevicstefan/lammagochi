@@ -3,6 +3,7 @@ import type { Stats } from '@lamagotchi/core';
 import { deriveCreatureMood } from './game/creatureBehavior';
 import { PixelPet, EggModel, Environment, ParticleEffects, HatchSequence } from './creature';
 import { determineEmotion } from './game/emotions';
+import { getWeather } from './game/weather';
 
 type Props = {
   stage: 'onboarding' | 'named_egg' | 'hatching' | 'alive';
@@ -30,10 +31,12 @@ export const CreatureCanvas3D = ({
   const mood = deriveCreatureMood(stats);
   const emotionId = determineEmotion(mood, stats.hunger, stats.energy, stats.trust, isStreaming || false, currentAnimation === 'evolving', dayPhase === 'night');
   const isEvolving = currentAnimation === 'evolving';
+  const weather = getWeather ? getWeather() : { type:'sunny' as const };
+  const weatherClass = weather.type === 'rainy' ? 'viewport--rainy' : weather.type === 'starry' ? 'viewport--starry' : weather.type === 'rainbow' ? 'viewport--rainbow' : weather.type === 'snowy' ? 'viewport--snowy' : '';
   const moodClass = emotionId === 'sleepy' ? 'viewport--sleepy' : emotionId === 'happy' ? 'viewport--calm' : emotionId === 'excited' ? 'viewport--excited' : '';
 
   return (
-    <div className={`viewport-container ${isEvolving ? 'viewport--shaking' : ''} ${moodClass}`}>
+    <div className={`viewport-container ${isEvolving ? 'viewport--shaking' : ''} ${moodClass} ${weatherClass}`}>
       {/* Mood screen overlay */}
       <div className="viewport-mood-overlay" />
       {/* 3D atmosphere layer (particles, ambient effects) */}

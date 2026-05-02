@@ -1637,6 +1637,20 @@ button:disabled {
   letter-spacing: 0.04em;
 }
 
+.item-ribbon__craftable {
+  font-size: 0.6rem;
+  color: var(--accent-cyan);
+  padding: 4px 8px;
+  margin-left: 6px;
+  border-left: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  animation: craft-hint-pulse 2s ease-in-out infinite;
+}
+@keyframes craft-hint-pulse {
+  0%,100% { opacity:0.6; }
+  50% { opacity:1; }
+}
+
 .item-drag-ghost {
   position: fixed;
   z-index: 500;
@@ -1645,6 +1659,15 @@ button:disabled {
   filter: drop-shadow(0 4px 12px rgba(99, 102, 241, 0.4));
   transform: translate(-50%, -50%);
 }
+
+/* =============================================
+   WEATHER EFFECTS
+   ============================================= */
+
+.viewport--rainy { background: linear-gradient(180deg, rgba(30,40,60,0.3) 0%, rgba(15,23,42,0.5) 100%); }
+.viewport--starry { background: radial-gradient(ellipse at 50% 30%, rgba(99,102,241,0.1) 0%, transparent 60%), var(--bg-deep); }
+.viewport--rainbow { background: radial-gradient(ellipse at 50% 40%, rgba(250,204,21,0.08) 0%, rgba(236,72,153,0.04) 50%, transparent 70%), var(--bg-deep); }
+.viewport--snowy { background: linear-gradient(180deg, rgba(200,210,230,0.15) 0%, rgba(15,23,42,0.4) 100%); }
 
 /* =============================================
    REDUCED MOTION

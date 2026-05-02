@@ -6,7 +6,7 @@ import { CreatureCanvas3D } from './CreatureCanvas3D';
 import { useAppStore, type ChatMessage } from './store';
 import { buildLamagotchiSystemPrompt } from './game/promptBuilder';
 import { chooseAutonomousPrompt } from './game/simulationTick';
-import { generateHeartbeatPrompt } from './game/systemPrompt';
+import { generateHeartbeatPrompt, buildTeachingPrompt } from './game/systemPrompt';
 import { getEvolutionStage, getEvolutionName } from './game/evolution';
 import { getUpcoming } from './game/stageAbilities';
 import { getWeather, weatherIcons } from './game/weather';
@@ -271,12 +271,18 @@ export const App = () => {
     if (soundEnabled) soundEffects.blip();
 
     try {
+      // Detect teaching mode
+      const isTeaching = /^teach\s/i.test(userMessage);
+      const activePrompt = isTeaching
+        ? buildTeachingPrompt(petName, level, userMessage.replace(/^teach\s+/i, ''))
+        : systemPrompt;
+
       let full = '';
       for await (const chunk of adapter.streamChat({
         model: modelName,
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
+          { role: 'system', content: activePrompt },
+          { role: 'user', content: isTeaching ? `I want to learn about: ${userMessage.replace(/^teach\s+/i, '')}` : userMessage },
         ],
         temperature: 0.7,
         signal: controller.signal,
@@ -755,6 +761,10 @@ export const App = () => {
             }}
             disabled={stage !== 'alive' || isStreaming}
           />
+          <button onClick={() => { setUserInput(`Teach ${petName} something new...`); }}
+            disabled={stage !== 'alive' || isStreaming}
+            style={{fontSize:'0.7rem',padding:'8px 10px',whiteSpace:'nowrap'}}
+            title="Send a teaching prompt to the LLM">📖 Teach</button>
           {isStreaming ? (
             <button
               onClick={() => { abortRef.current?.abort(); setStreaming(false); setBubbleText('...'); }}

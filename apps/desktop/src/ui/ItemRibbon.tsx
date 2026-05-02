@@ -1,10 +1,12 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import type { GameItem } from '../game/items';
 import { getAvailableItems } from '../game/items';
+import { findCraftable } from '../game/crafting';
 
 type ItemRibbonProps = {
   level: number;
   onUseItem: (item: GameItem) => void;
+  onCraft?: (recipe: any) => void;
   disabled?: boolean;
 };
 
@@ -55,6 +57,8 @@ export const ItemRibbon = ({ level, onUseItem, disabled }: ItemRibbonProps) => {
     setDragItem(null);
   }, [items, onUseItem]);
 
+  const craftable = useMemo(() => findCraftable(items.map(i=>i.id), level), [items, level]);
+
   if (items.length === 0) return null;
 
   return (
@@ -86,6 +90,12 @@ export const ItemRibbon = ({ level, onUseItem, disabled }: ItemRibbonProps) => {
             </div>
           ))}
         </div>
+        {/* Craftable combos hint */}
+        {craftable.length > 0 && (
+          <div className="item-ribbon__craftable">
+            🧪 {craftable[0].icon} <strong>{craftable[0].name}</strong> craftable!
+          </div>
+        )}
       </div>
 
       {/* Drag ghost indicator */}
