@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CreatureMood } from '../game/creatureBehavior';
 import { getLevelScale, type PetSkin } from '../game/evolution';
 import { PropsRenderer } from './PropsRenderer';
+import { LimbsRenderer } from './LimbsRenderer';
 
 /* ================================================================
    PixelPet v4 — AAAA Game Animation Quality
@@ -351,6 +352,9 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
 
             {/* Ocean ripples */}
             {skin==='ocean'&&(<g opacity="0.4"><rect x="18" y="40" width="28" height="1" fill="#93c5fd"/><rect x="20" y="42" width="24" height="1" fill="#60a5fa"/></g>)}
+
+            {/* Joint-based limbs */}
+            <LimbsRenderer level={level} anim="idle" emotion={resolvedAnim} bodyW={si.bodyW} bodyH={si.bodyH} bodyMain={bodyMain} bodyLight={bodyLight} bodyDark={bodyDark} />
 
             {/* ====== FACE — Expression-driven ====== */}
             <g>

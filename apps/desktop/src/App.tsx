@@ -9,6 +9,7 @@ import { chooseAutonomousPrompt } from './game/simulationTick';
 import { generateHeartbeatPrompt } from './game/systemPrompt';
 import { getEvolutionStage, getEvolutionName } from './game/evolution';
 import { getUpcoming } from './game/stageAbilities';
+import { getWeather, weatherIcons } from './game/weather';
 import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer, ItemRibbon } from './ui';
 import { soundEffects } from './audio/soundEffects';
 
@@ -360,9 +361,14 @@ export const App = () => {
         </div>
         <div className="topbar__right">
           {stage === 'alive' && (
-            <span className="topbar__phase">
-              {dayPhase === 'morning' ? '🌅' : dayPhase === 'day' ? '☀️' : dayPhase === 'evening' ? '🌆' : '🌙'} {dayPhase}
-            </span>
+            <>
+              <span className="topbar__phase">
+                {dayPhase === 'morning' ? '🌅' : dayPhase === 'day' ? '☀️' : dayPhase === 'evening' ? '🌆' : '🌙'} {dayPhase}
+              </span>
+              <span className="topbar__phase" style={{fontSize:'0.7rem'}} title="Weather">
+                {weatherIcons[getWeather().type]}
+              </span>
+            </>
           )}
           <span className="topbar__status">
             <span className="status-dot" />
