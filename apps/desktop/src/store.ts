@@ -9,6 +9,9 @@ import { getNewlyUnlocked } from './game/stageAbilities';
 import { applyItemEffects, type GameItem } from './game/items';
 import { recordEvent, updatePreferences, createEmptyPreferences, generatePetThought, type BehaviorEvent, type PetPreferences } from './game/behaviorMemory';
 import { generatePersonality, getPersonalityChatter, getPersonalityReaction, type PetPersonality } from './game/personality';
+import { createSkillTrees, advanceSkill, type SkillTree, type SkillId } from './game/curriculum';
+import { createFriendship, checkMilestones, getFriendshipTier, type FriendshipState, type Milestone } from './game/friendship';
+import { getWeather, weatherIcons, type WeatherState } from './game/weather';
 
 type ActionType = 'feed' | 'play' | 'sleep' | 'clean' | 'teach' | 'task' | 'daydream';
 type LifecycleStage = 'onboarding' | 'named_egg' | 'hatching' | 'alive';
@@ -89,6 +92,10 @@ interface AppState {
   behaviorEvents: BehaviorEvent[];
   preferences: PetPreferences;
   personality: PetPersonality;
+  skillTrees: SkillTree[];
+  friendship: FriendshipState;
+  weather: WeatherState;
+  miniGame: any;
   // Actions
   setPetName: (name: string) => void;
   setModelName: (model: string) => void;
@@ -101,6 +108,7 @@ interface AppState {
   setTaskDifficulty: (value: TaskDifficulty) => void;
   performAction: (action: ActionType) => void;
   useItem: (item: GameItem) => void;
+  teachSkill: (skillId: SkillId) => { xp:number; tieredUp:boolean };
   feedKnowledge: (text: string) => void;
   setMemoryApproval: (id: string, approved: boolean) => void;
   clearUserInput: () => void;
@@ -174,6 +182,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   behaviorEvents: [],
   preferences: createEmptyPreferences(),
   personality: generatePersonality(),
+  skillTrees: createSkillTrees(),
+  friendship: createFriendship(),
+  weather: getWeather(),
+  miniGame: null,
 
   setPetName: (name) => {
     soundEffects.chirp();
@@ -534,6 +546,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       journalEntries: [entry, ...state.journalEntries].slice(0, 60),
       ...(justLeveled ? { currentAnimation: 'evolving' as PetAnimationName } : {}),
     });
+  },
+
+  teachSkill: (skillId) => {
+    const state = get();
+    const result = advanceSkill(state.skillTrees, skillId, 10);
+    if (result.tieredUp) {
+      const tree = result.trees.find(t => t.id === skillId)!;
+      const tier = tree.tiers[tree.currentTier];
+      showToast('info', `🎓 ${tier.name}!`, `${tree.label} skill advanced!`, 3500);
+    }
+    set({ skillTrees: result.trees });
+    // Also advance knowledge stat
+    const stats = { ...state.stats, knowledge: clampStat(state.stats.knowledge + 5), curiosity: clampStat(state.stats.curiosity + 3) };
+    const prog = addXp(state.xp, state.level, 8);
+    set({ stats, xp: prog.xp, level: prog.level });
+    return { xp: 8, tieredUp: result.tieredUp };
   },
 
   feedKnowledge: (text) => {
