@@ -36,7 +36,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
 
   // Animation state (lerped)
   // Expression blend targets (game-quality smooth transitions)
-  const exprRef = useRef({ eyeH:8, eyeY:31, squint:0, browY:0, browAngle:0, mouthW:4, mouthH:1.5, mouthY:43, mouthCurve:0, blushA:0.2, pupilH:5 });
+  const exprRef = useRef({ eyeH:4.5, eyeY:31, squint:0, browY:0, browAngle:0, mouthW:4, mouthH:1.5, mouthY:43, mouthCurve:0, blushA:0.2, pupilH:5 });
   const aRef = useRef({ bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0,blink:0,earL:0,earR:0,antic:0,tailWag:0,idleVariant:0,pupilSize:1,headTilt:0,noseTwitch:0,eyeDartX:0,shimmerPos:0,scratchHand:0 });
   const [renderTick, setRender] = useState(0);
   const frameRef = useRef(0);
