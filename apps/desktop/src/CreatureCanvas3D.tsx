@@ -1,7 +1,8 @@
 import { Canvas } from '@react-three/fiber';
 import type { Stats } from '@lamagotchi/core';
 import { deriveCreatureMood } from './game/creatureBehavior';
-import { PixelPet, EggModel, Environment, ParticleEffects, HatchSequence } from './creature';
+import { EggModel, Environment, ParticleEffects, HatchSequence } from './creature';
+import { CanvasPet } from './creature/CanvasPet';
 import { determineEmotion } from './game/emotions';
 import { getWeather } from './game/weather';
 
@@ -71,18 +72,16 @@ export const CreatureCanvas3D = ({
         </Canvas>
       </div>
 
-      {/* Pixel pet overlay (on top of 3D atmosphere) */}
+      {/* Canvas pet overlay (on top of 3D atmosphere) */}
       {stage === 'alive' && (
         <div className="viewport-pet-layer">
-          <PixelPet
+          <CanvasPet
             level={level}
-            mood={mood}
-            dayPhase={dayPhase}
-            isStreaming={isStreaming}
-            interactionSpark={interactionSpark}
-            actionAnimation={currentAnimation}
             emotion={emotionId}
-            skin={skin as any}
+            skin={skin}
+            night={dayPhase === 'night'}
+            actionAnimation={currentAnimation}
+            interactionSpark={interactionSpark}
           />
         </div>
       )}
