@@ -429,7 +429,8 @@ export const App = () => {
             </button>
           </div>
 
-          <div className="side-pane">
+          <div className="side-pane" key={sideTab}>
+            <div className="side-pane-content">
             {/* Care Tab */}
             {sideTab === 'care' && (
               <>
@@ -621,6 +622,7 @@ export const App = () => {
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
       </section>
@@ -634,6 +636,9 @@ export const App = () => {
 
       {/* Bottom Action Zone */}
       <footer className="action-zone">
+        <div className="keyboard-hint">
+          Press <span>1</span>-<span>7</span> for quick actions &middot; <span>Enter</span> to chat
+        </div>
         <div className="action-row">
           {ACTION_DEFS.map((def) => (
             <ActionButton

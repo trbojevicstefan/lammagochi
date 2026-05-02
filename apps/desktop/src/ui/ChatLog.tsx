@@ -14,6 +14,10 @@ type ChatLogProps = {
 };
 
 const formatTime = (ts: number): string => {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   const d = new Date(ts);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
@@ -24,6 +28,12 @@ export const ChatLog = ({ messages, petName = 'Lamagotchi', isStreaming }: ChatL
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    if (isStreaming) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isStreaming]);
 
   return (
     <div className="chat-log">
