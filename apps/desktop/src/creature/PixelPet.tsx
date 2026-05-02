@@ -27,7 +27,7 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
     bodyW: lvl<=5?34:lvl<=10?32:lvl<=18?30:28,
     bodyH: lvl<=5?28:lvl<=10?30:lvl<=18?32:34,
     headR: lvl<=5?0.6:lvl<=10?0.58:lvl<=18?0.56:0.55,
-    eyeSize: lvl<=5?0.18:lvl<=10?0.15:lvl<=18?0.14:0.13,
+    eyeSize: lvl<=5?0.14:lvl<=10?0.12:lvl<=18?0.11:0.10,
     mouthY: lvl<=5?43:lvl<=10?42:lvl<=18?41:40,
   });
   const si = st(level);
@@ -369,24 +369,24 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
                 <rect x="21" y={exEyeY} width="8" height={exEyeH} fill="#1e1b4b" rx="1"/>
                 <rect x="35" y={exEyeY} width="8" height={exEyeH} fill="#1e1b4b" rx="1"/>
               </>):(<>
-                <rect x="20" y={exEyeY} width="10" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
-                <rect x="34" y={exEyeY} width="10" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
+                <rect x="21" y={exEyeY} width="8" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
+                <rect x="35" y={exEyeY} width="8" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
                 {exSquint>0.1&&(<>
-                  <rect x="20" y={exEyeY} width="10" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
-                  <rect x="34" y={exEyeY} width="10" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
+                  <rect x="21" y={exEyeY} width="8" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
+                  <rect x="35" y={exEyeY} width="8" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
                 </>)}
                 {blink<0.6&&(<>
-                  <rect x={23+antic+eyeDartX} y={exEyeY+2} width={5*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={37+antic+eyeDartX} y={exEyeY+2} width={5*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={25} y={exEyeY+2} width="2" height="2" fill="white"/>
-                  <rect x={39} y={exEyeY+2} width="2" height="2" fill="white"/>
+                  <rect x={24+antic+eyeDartX} y={exEyeY+2} width={4*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={38+antic+eyeDartX} y={exEyeY+2} width={4*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={26} y={exEyeY+2} width="2" height="2" fill="white"/>
+                  <rect x={40} y={exEyeY+2} width="2" height="2" fill="white"/>
                 </>)}
               </>)}
 
               {/* Blush — expression-driven opacity */}
               {!si.isEgg&&<g opacity={exBlushA}>
-                <rect x="17" y="38" width="5" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
-                <rect x="42" y="38" width="5" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
+                <rect x="18" y={exEyeY+6} width="4" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
+                <rect x="42" y={exEyeY+6} width="4" height="2" fill={skin==='inferno'?'#fca5a5':'#f472b6'} rx="0.5"/>
               </g>}
 
               {/* MOUTH — expression-driven width, height, position, curve */}
