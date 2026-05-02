@@ -21,7 +21,7 @@ export const CanvasPet = ({ level, emotion, skin = 'none', night = false, action
         imageRendering: 'pixelated',
         width: '100%',
         height: '100%',
-        objectFit: 'contain',
+        background: 'transparent',
       }}
     />
   );

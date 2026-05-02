@@ -11,9 +11,8 @@ export class PixelRenderer {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', {
-      alpha: false,
+      alpha: true,
       desynchronized: true,
-      willReadFrequently: false,
     })!;
     this.ctx.imageSmoothingEnabled = false;
     this.scale = 1;
@@ -30,9 +29,13 @@ export class PixelRenderer {
     this.ctx.imageSmoothingEnabled = false;
   }
 
-  clear(bg = '#020617') {
-    this.ctx.fillStyle = bg;
-    this.ctx.fillRect(0, 0, 64, 64);
+  clear(bg?: string) {
+    if (bg) {
+      this.ctx.fillStyle = bg;
+      this.ctx.fillRect(0, 0, 64, 64);
+    } else {
+      this.ctx.clearRect(0, 0, 64, 64);
+    }
   }
 
   r(x: number, y: number, w: number, h: number, fill: string, rx = 0) {

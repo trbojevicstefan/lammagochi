@@ -133,7 +133,7 @@ export const useCanvasPet = ({
       state.flash *= 0.9;
 
       // === DRAW ===
-      renderer.clear();
+      renderer.clear(); // transparent bg
       drawPet(renderer, state, level, skin, emotion, night);
       drawProps(renderer, anim, skin, state, level);
       drawParticles(renderer, anim, state, t);
