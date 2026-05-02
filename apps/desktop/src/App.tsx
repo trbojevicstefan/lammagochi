@@ -12,6 +12,8 @@ import { getUpcoming } from './game/stageAbilities';
 import { getWeather, weatherIcons } from './game/weather';
 import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer, ItemRibbon, showToast } from './ui';
 import { MiniGameOverlay } from './ui/MiniGameOverlay';
+import { PetControls } from './ui/PetControls';
+import { canvasEngine } from './engine';
 import { getCurrentSlot, checkRoutineStreak, getRoutineText } from './game/routine';
 import { decideBehavior } from './game/behaviorTree';
 import { getFriendshipTier, getTierInfo } from './game/friendship';
@@ -38,6 +40,10 @@ export const App = () => {
   const [interactionSpark, setInteractionSpark] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [miniGameOpen, setMiniGameOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [petMuted, setPetMuted] = useState(false);
+  const [petPaused, setPetPaused] = useState(false);
+  const [perfMode, setPerfMode] = useState<string>('full');
   const sparkTimeout = useRef<ReturnType<typeof setTimeout>>();
   const lastInteractionRef = useRef(Date.now());
   const abortRef = useRef<AbortController | null>(null);
@@ -422,6 +428,9 @@ export const App = () => {
           </button>
           <button onClick={() => setMiniGameOpen(true)} style={{ fontSize:'0.7rem', padding:'4px 8px' }} title="Mini-Games">
             🎮
+          </button>
+          <button onClick={() => setControlsOpen(true)} style={{ fontSize:'0.7rem', padding:'4px 8px' }} title="Pet Controls">
+            🎛️
           </button>
         </div>
       </header>
@@ -810,6 +819,16 @@ export const App = () => {
         onClose={() => setMiniGameOpen(false)}
         isOpen={miniGameOpen}
         onReward={(xp, msg) => { showToast('xp', `+${xp} XP`, msg, 3000); }}
+      />
+      <PetControls
+        isOpen={controlsOpen}
+        onClose={() => setControlsOpen(false)}
+        muted={petMuted}
+        paused={petPaused}
+        performanceMode={perfMode}
+        onToggleMute={() => setPetMuted(m => !m)}
+        onTogglePause={() => { setPetPaused(p => { if (!p) canvasEngine.pause(); else canvasEngine.resume(); return !p; }); }}
+        onSetPerformance={(m) => { setPerfMode(m); canvasEngine.setMode(m as any); }}
       />
     </main>
   );
