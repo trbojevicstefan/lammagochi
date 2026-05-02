@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 
 import { SKINS, getUnlockedSkins, type PetSkin } from '../game/evolution';
 import type { PetPersonality } from '../game/personality';
+import { getFriendshipTier, getTierInfo, type FriendshipState } from '../game/friendship';
 
 type SettingsPanelProps = {
   isOpen: boolean;
@@ -15,6 +16,7 @@ type SettingsPanelProps = {
   wordCap: number;
   currentSkin: string;
   personality?: PetPersonality;
+  friendship?: FriendshipState;
   onRename: (name: string) => void;
   onToggleSound: () => void;
   onSetSkin: (skin: string) => void;
@@ -36,6 +38,7 @@ export const SettingsPanel = ({
   onToggleSound,
   currentSkin,
   personality,
+  friendship,
   onSetSkin,
   onExport,
   onImport,
@@ -95,6 +98,13 @@ export const SettingsPanel = ({
                   <div><span>Quirk</span><span style={{fontSize:'0.65rem'}}>{personality.quirk}</span></div>
                 </>
               )}
+              {friendship && (() => { const tier = getFriendshipTier(friendship.trust); const info = getTierInfo(tier); return (
+                <>
+                  <div><span>Friendship</span><span>{info.name}</span></div>
+                  <div><span>Trust</span><span>{friendship.trust}/100</span></div>
+                  <div><span>Milestones</span><span>{friendship.milestones.filter(m=>m.unlockedAt).length}/{friendship.milestones.length}</span></div>
+                </>
+              );})()}
             </div>
           </section>
 

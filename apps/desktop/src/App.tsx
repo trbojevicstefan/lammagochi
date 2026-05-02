@@ -12,7 +12,9 @@ import { getUpcoming } from './game/stageAbilities';
 import { getWeather, weatherIcons } from './game/weather';
 import { StatMeter, ActionButton, ACTION_DEFS, ChatBubble, ChatLog, OnboardingScreen, HatchScreen, SettingsPanel, ToastContainer, ItemRibbon, showToast } from './ui';
 import { MiniGameOverlay } from './ui/MiniGameOverlay';
-import { getCurrentSlot, checkRoutineStreak } from './game/routine';
+import { getCurrentSlot, checkRoutineStreak, getRoutineText } from './game/routine';
+import { decideBehavior } from './game/behaviorTree';
+import { getFriendshipTier, getTierInfo } from './game/friendship';
 import { soundEffects } from './audio/soundEffects';
 
 const adapter = new OllamaHttpAdapter();
@@ -65,6 +67,7 @@ export const App = () => {
     preferences,
     personality,
     skillTrees,
+    friendship,
     setPetName,
     setSkin,
     exportSave,
@@ -194,18 +197,22 @@ export const App = () => {
     return () => clearInterval(id);
   }, [stage]);
 
-  // Heartbeat watchdog + autonomous prompts
+  // Heartbeat watchdog — behavior tree + memory + personality
   useEffect(() => {
     const id = setInterval(() => {
       if (stage !== 'alive' || isStreaming) return;
       const minsSinceInteraction = (Date.now() - lastInteractionRef.current) / 60000;
-      // Try heartbeat first (contextual responses)
-      const heartbeat = generateHeartbeatPrompt(stats, dayPhase, minsSinceInteraction, preferences, behaviorEvents, personality);
+      const slot = getCurrentSlot();
+      // Try behavior tree first (autonomous decisions)
+      const decision = decideBehavior(stats, personality, dayPhase === 'night', minsSinceInteraction, !!slot);
+      // Then personality chatter, then memory thoughts, then old fallback
+      const heartbeat = decision.speech
+        || generateHeartbeatPrompt(stats, dayPhase, minsSinceInteraction, preferences, behaviorEvents, personality);
       const prompt = heartbeat || chooseAutonomousPrompt(stats, dayPhase);
       if (prompt) setBubbleText(capWords(prompt, level) || prompt);
-    }, 15000); // Check every 15s
+    }, 15000);
     return () => clearInterval(id);
-  }, [capWords, dayPhase, isStreaming, level, setBubbleText, stage, stats]);
+  }, [capWords, dayPhase, isStreaming, level, setBubbleText, stage, stats, personality, preferences, behaviorEvents]);
 
   // Hatch animation progression
   useEffect(() => {
@@ -381,6 +388,9 @@ export const App = () => {
               </span>
               <span className="topbar__phase" style={{fontSize:'0.7rem'}} title="Weather">
                 {weatherIcons[getWeather().type]}
+              </span>
+              <span className="topbar__phase" style={{fontSize:'0.6rem',opacity:0.7}}>
+                {getRoutineText(getCurrentSlot())}
               </span>
             </>
           )}
@@ -783,6 +793,7 @@ export const App = () => {
         onSetSkin={setSkin}
         onExport={exportSave}
         onImport={importSave}
+        friendship={friendship}
       />
       <MiniGameOverlay
         level={level}

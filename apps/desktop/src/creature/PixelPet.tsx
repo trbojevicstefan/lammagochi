@@ -173,10 +173,14 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
       const anticTarget = shouldAnticipate&&elapsed<0.25?Math.sin(elapsed/0.25*Math.PI*0.5)*0.6:0;
       aRef.current.antic = lerp(aRef.current.antic, anticTarget, 0.2);
 
-      // === TARGET ANIMATION VALUES ===
+      // === TARGET ANIMATION VALUES — emotion body language ===
       const tg = { bx:0,by:0,sx:1,sy:1,wiggle:0,sway:0,flash:0 };
+      const emo = getEmotion((emotion as EmotionId) || 'happy');
       const bSpeed = si.isEgg?0.9:0.4;
-      tg.by = Math.sin(t*bSpeed*Math.PI*2)*1.0;
+      const bodyBounce = emo.body.bounce * (anim==='excited'||anim==='playing'?1:anim==='idle'?0.3:0);
+      const bodyTension = emo.body.tension;
+      const bodyLean = emo.body.lean;
+      tg.by = Math.sin(t*bSpeed*Math.PI*2)*(1.0 + bodyBounce*3);
       tg.sx = 1+Math.cos(t*bSpeed*Math.PI*2)*0.005;
       tg.sy = 1-Math.sin(t*bSpeed*Math.PI*2)*0.006;
       if(anim==='excited'||anim==='playing'){ const b=Math.abs(Math.sin(t*2.5))*5; tg.by=-b; tg.sy=1+b/70; tg.sx=1-b/90; }
@@ -205,7 +209,6 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
 
       // === EXPRESSION BLEND TARGETS — emotion-driven ===
       const e = exprRef.current;
-      const emo = getEmotion((emotion as EmotionId) || 'happy');
       const eTgt = { ...emo.face };
       e.eyeH=lerp(e.eyeH,eTgt.eyeH,0.08); e.eyeY=lerp(e.eyeY,eTgt.eyeY,0.08);
       e.squint=lerp(e.squint,eTgt.squint,0.06); e.browY=lerp(e.browY,eTgt.browY,0.06);
