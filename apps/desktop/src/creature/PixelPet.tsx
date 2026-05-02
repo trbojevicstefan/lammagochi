@@ -243,6 +243,13 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
 
   // Expression values (lerped, game-quality)
   const { eyeH:exEyeH, eyeY:exEyeY, squint:exSquint, browY:exBrowY, browAngle:exBrowA, mouthW:exMouthW, mouthH:exMouthH, mouthY:exMouthY, mouthCurve:exMouthCurve, blushA:exBlushA, pupilH:exPupilH } = exprRef.current;
+
+  // Stage-proportional eye dimensions
+  const eyeBaseW = si.isEgg ? 0 : si.isInfant ? 7 : si.isToddler ? 6.5 : si.isLearner ? 6 : 5.5; // width in px
+  const eyeBaseH = si.isEgg ? 0 : si.isInfant ? 6 : si.isToddler ? 5.5 : si.isLearner ? 5 : 4.5; // base height
+  const eyeGap = si.isEgg ? 0 : si.isInfant ? 13 : si.isToddler ? 13.5 : 14; // gap between eyes
+  const eyeX1 = 32 - eyeGap/2 - eyeBaseW/2;
+  const eyeX2 = 32 + eyeGap/2 - eyeBaseW/2;
   const isHappy = resolvedAnim==='happy'||resolvedAnim==='playing';
   const isSleepy = resolvedAnim==='sleepy'||resolvedAnim==='daydreaming';
   const isExcited = resolvedAnim==='excited';
@@ -364,22 +371,22 @@ export const PixelPet = ({ level, mood, dayPhase, isStreaming, interactionSpark=
                 </g>
               </>)}
 
-              {/* EYES — expression-driven */}
+              {/* EYES — stage-proportioned, expression-driven */}
               {exEyeH<=2.5?(<>
-                <rect x="21" y={exEyeY} width="8" height={exEyeH} fill="#1e1b4b" rx="1"/>
-                <rect x="35" y={exEyeY} width="8" height={exEyeH} fill="#1e1b4b" rx="1"/>
+                <rect x={eyeX1+1} y={exEyeY} width={eyeBaseW} height={exEyeH} fill="#1e1b4b" rx="1"/>
+                <rect x={eyeX2+1} y={exEyeY} width={eyeBaseW} height={exEyeH} fill="#1e1b4b" rx="1"/>
               </>):(<>
-                <rect x="21" y={exEyeY} width="8" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
-                <rect x="35" y={exEyeY} width="8" height={exEyeH*(1-blink*0.95)} fill="white" rx="1"/>
+                <rect x={eyeX1} y={exEyeY} width={eyeBaseW} height={Math.max(1, eyeBaseH*(1-blink*0.95))} fill="white" rx="1"/>
+                <rect x={eyeX2} y={exEyeY} width={eyeBaseW} height={Math.max(1, eyeBaseH*(1-blink*0.95))} fill="white" rx="1"/>
                 {exSquint>0.1&&(<>
-                  <rect x="21" y={exEyeY} width="8" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
-                  <rect x="35" y={exEyeY} width="8" height={Math.round(exSquint*4)} fill={bodyMain} rx="1"/>
+                  <rect x={eyeX1} y={exEyeY} width={eyeBaseW} height={Math.round(exSquint*3)} fill={bodyMain} rx="1"/>
+                  <rect x={eyeX2} y={exEyeY} width={eyeBaseW} height={Math.round(exSquint*3)} fill={bodyMain} rx="1"/>
                 </>)}
                 {blink<0.6&&(<>
-                  <rect x={24+antic+eyeDartX} y={exEyeY+2} width={4*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={38+antic+eyeDartX} y={exEyeY+2} width={4*pupilSize} height={Math.max(1,exPupilH*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
-                  <rect x={26} y={exEyeY+2} width="2" height="2" fill="white"/>
-                  <rect x={40} y={exEyeY+2} width="2" height="2" fill="white"/>
+                  <rect x={eyeX1+eyeBaseW*0.3+antic+eyeDartX} y={exEyeY+1.5} width={eyeBaseW*0.45*pupilSize} height={Math.max(1,eyeBaseH*0.6*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={eyeX2+eyeBaseW*0.3+antic+eyeDartX} y={exEyeY+1.5} width={eyeBaseW*0.45*pupilSize} height={Math.max(1,eyeBaseH*0.6*pupilSize*(1-blink))} fill="#1e1b4b" rx="0.5"/>
+                  <rect x={eyeX1+eyeBaseW*0.45} y={exEyeY+1.5} width="1.5" height="1.5" fill="white"/>
+                  <rect x={eyeX2+eyeBaseW*0.45} y={exEyeY+1.5} width="1.5" height="1.5" fill="white"/>
                 </>)}
               </>)}
 
